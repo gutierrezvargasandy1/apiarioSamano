@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Código OTP</title>
+  <style>
+    /* Fondo general */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(to bottom right, #fef3c7, #fed7aa, #fef3c7);
+      font-family: "Segoe UI", sans-serif;
+      color: #374151;
+      padding: 1rem;
+    }
+
+    /* Tarjeta principal */
+    .card {
+      background: white;
+      padding: 2.5rem 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                  0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      max-width: 28rem;
+      width: 100%;
+      border-top: 4px solid #f59e0b;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    /* Encabezado */
+    .card h2 {
+      font-size: 1.875rem;
+      font-weight: bold;
+      color: #d97706;
+      margin-bottom: 0.5rem;
+    }
+
+    .card p {
+      color: #4b5563;
+      margin: 0.5rem 0 1rem;
+    }
+
+    /* Código OTP */
+    .otp-code {
+      display: inline-block;
+      background: #eff6ff;
+      border: 2px dashed #fa9660;
+      color: #eb7725;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.5rem;
+      font-size: 2rem;
+      font-weight: bold;
+      letter-spacing: 5px;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Nota informativa */
+    .note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      color: #92400e;
+      font-size: 0.95rem;
+    }
+
+    .note svg {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      fill: #fa3715;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Pie de página */
+    .footer {
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: #6b7280;
+      border-top: 1px solid #fcd34d;
+      padding-top: 1rem;
+    }
+
+    .footer p {
+      margin: 0.3rem 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .card {
+        padding: 1.5rem;
+      }
+
+      .otp-code {
+        font-size: 1.5rem;
+      }
+
+      .card h2 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>¡Hola, <span th:text="${nombreUsuario}">Usuario</span>!</h2>
+    <p>Código de verificación</p>
+
+    <div class="otp-code" th:text="${codigoVerificacion}">000000</div>
+
+    <div class="note">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+      </svg>
+      <strong>Este código OTP expira en 5 minutos. No lo compartas con nadie.</strong>
+    </div>
+
+    <div class="footer">
+      <p>Si no solicitaste este código, ignora este correo.</p>
+      <p>Enviado desde el microservicio de notificaciones</p>
+    </div>
+  </div>
+</body>
+</html>

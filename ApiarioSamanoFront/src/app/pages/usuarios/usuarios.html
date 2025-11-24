@@ -1,0 +1,247 @@
+<div class="usuarios-container">
+  <!-- Header con título y acciones -->
+  <div class="header">
+    <h2>Gestión de Usuarios</h2>
+    <div class="actions">
+      <!-- Búsqueda -->
+      <div class="search-box">
+        <input 
+          type="text" 
+          placeholder="Buscar por nombre, apellido o correo..." 
+          [(ngModel)]="terminoBusqueda"
+          name="terminoBusqueda"
+        />
+        <span class="material-icons search-icon">search</span>
+      </div>
+      
+      <!-- Botón nuevo usuario -->
+      <button class="btn add" (click)="abrirFormulario()">
+        <span class="material-icons">person_add</span> 
+        Agregar Usuario
+      </button>
+    </div>
+  </div>
+
+  <!-- ✅ Mensaje de confirmación -->
+  <div class="alert" *ngIf="mensaje">{{ mensaje }}</div>
+
+  <!-- Tabla de usuarios -->
+  <div class="tabla-container">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Nombre Completo</th>
+          <th>Correo Electrónico</th>
+          <th>Apellido Paterno</th>
+          <th>Apellido Materno</th>
+          <th>Rol</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Estado de carga -->
+        <tr *ngIf="cargando">
+          <td colspan="6">
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Cargando usuarios...</p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Lista de usuarios -->
+        <tr *ngFor="let usuario of filtrarUsuarios()" class="fade-in">
+          <td>
+            <strong>{{ usuario.nombre }} {{ usuario.apellidoPa }}</strong>
+          </td>
+          <td>{{ usuario.email }}</td>
+          <td>{{ usuario.apellidoPa }}</td>
+          <td>{{ usuario.apellidoMa }}</td>
+          <td>
+            <span class="rol-badge" [class]="'rol-' + usuario.rol.toLowerCase()">
+              {{ usuario.rol }}
+            </span>
+          </td>
+          <td>
+            <div class="tabla-acciones">
+              <!-- Botón editar -->
+              <button 
+                class="btn edit" 
+                (click)="editarUsuario(usuario)"
+                title="Editar usuario"
+              >
+                <span class="material-icons">edit</span>
+              </button>
+              
+              <!-- Botón eliminar -->
+<button 
+  class="btn delete" 
+  (click)="abrirModalConfirmacion(usuario)"
+  title="Eliminar usuario"
+  *ngIf="!esUsuarioLogueado(usuario)"
+>
+  <span class="material-icons">delete</span>
+</button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Estado vacío cuando no hay usuarios -->
+        <tr *ngIf="!cargando && filtrarUsuarios().length === 0">
+          <td colspan="6">
+            <div class="empty-state">
+              <div class="empty-state-icon">👥</div>
+              <h3>No se encontraron usuarios</h3>
+              <p>Comienza agregando tu primer usuario</p>
+              <button class="btn add" (click)="abrirFormulario()">
+                <span class="material-icons">person_add</span>
+                Agregar Primer Usuario
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal para agregar/editar usuario -->
+  <div class="modal" *ngIf="mostrarFormulario">
+    <div class="modal-content">
+      <h3>{{ editando ? 'Editar Usuario' : 'Nuevo Usuario' }}</h3>
+
+      <form (ngSubmit)="guardarUsuario()">
+        <!-- Nombre -->
+        <div>
+          <label for="nombre">Nombre *</label>
+          <input 
+            type="text" 
+            id="nombre"
+            [(ngModel)]="usuarioSeleccionado.nombre" 
+            name="nombre" 
+            placeholder="Ej: Juan"
+            required 
+          />
+        </div>
+
+        <!-- Correo Electrónico -->
+        <div>
+          <label for="email">Correo Electrónico *</label>
+          <input 
+            type="email" 
+            id="email"
+            [(ngModel)]="usuarioSeleccionado.email" 
+            name="email" 
+            placeholder="Ej: usuario@ejemplo.com"
+            required 
+          />
+        </div>
+
+        <!-- Apellido Paterno -->
+        <div>
+          <label for="apellidoPa">Apellido Paterno *</label>
+          <input 
+            type="text" 
+            id="apellidoPa"
+            [(ngModel)]="usuarioSeleccionado.apellidoPa" 
+            name="apellidoPa" 
+            placeholder="Ej: Pérez"
+            required 
+          />
+        </div>
+
+        <!-- Apellido Materno -->
+        <div>
+          <label for="apellidoMa">Apellido Materno *</label>
+          <input 
+            type="text" 
+            id="apellidoMa"
+            [(ngModel)]="usuarioSeleccionado.apellidoMa" 
+            name="apellidoMa" 
+            placeholder="Ej: García"
+            required 
+          />
+        </div>
+
+        <!-- Rol -->
+        <div>
+          <label for="rol">Rol *</label>
+          <select 
+            id="rol"
+            [(ngModel)]="usuarioSeleccionado.rol" 
+            name="rol" 
+            required
+          >
+            <option value="">Seleccione un rol...</option>
+            <option value="ADMINISTRADOR">Administrador</option>
+            <option value="OPERADOR">Operador</option>
+            <option value="CLIENTE">Cliente</option>
+          </select>
+        </div>
+
+        <!-- Acciones del modal -->
+        <div class="modal-actions">
+          <button class="btn save" type="submit" [disabled]="cargando">
+            {{ cargando ? 'Guardando...' : 'Guardar' }}
+          </button>
+          <button 
+            class="btn cancel" 
+            type="button" 
+            (click)="cerrarFormulario()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmación para eliminar usuario -->
+  <div class="modal" *ngIf="mostrarModalConfirmacion">
+    <div class="modal-content confirmacion-modal">
+      <div class="confirmacion-icon">
+        <span class="material-icons">warning</span>
+      </div>
+      
+      <h3>¿Estás seguro de eliminar este usuario?</h3>
+      
+      <div class="confirmacion-info">
+        <div class="usuario-info">
+          <strong>{{ usuarioAEliminar?.nombre }} {{ usuarioAEliminar?.apellidoPa }} {{ usuarioAEliminar?.apellidoMa }}</strong>
+        </div>
+        <div class="usuario-email">{{ usuarioAEliminar?.email }}</div>
+        <div class="usuario-rol">
+          <span class="rol-badge" [class]="'rol-' + usuarioAEliminar?.rol?.toLowerCase()">
+            {{ usuarioAEliminar?.rol }}
+          </span>
+        </div>
+      </div>
+
+      <div class="advertencia">
+        <span class="material-icons">info</span>
+        <p>Esta acción no se puede deshacer. El usuario será eliminado permanentemente del sistema.</p>
+      </div>
+
+      <div class="modal-actions confirmacion-actions">
+        <button 
+          class="btn cancel" 
+          type="button" 
+          (click)="cerrarModalConfirmacion()"
+          [disabled]="cargando"
+        >
+          <span class="material-icons">close</span> 
+          Cancelar
+        </button>
+        <button 
+          class="btn delete-confirm" 
+          type="button" 
+          (click)="confirmarEliminacion()"
+          [disabled]="cargando"
+        >
+          <span class="material-icons" *ngIf="!cargando">delete</span>
+          <span class="spinner-small" *ngIf="cargando"></span>
+          {{ cargando ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>

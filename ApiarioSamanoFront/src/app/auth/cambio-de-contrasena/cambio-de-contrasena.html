@@ -1,0 +1,52 @@
+<div class="change-password-container">
+  <div class="change-password-card">
+    
+    <!-- Contenido del formulario -->
+    <h2>Cambiar Contraseña</h2>
+    
+    <p class="subtitle">
+      Ingresa tu nueva contraseña y confírmala
+    </p>
+
+    <form (ngSubmit)="cambiarContrasena()" #form="ngForm">
+      <!-- Nueva contraseña -->
+      <div class="input-group">
+        <label for="nuevaContrasena">Nueva Contraseña</label>
+        <input
+          type="password"
+          id="nuevaContrasena"
+          name="nuevaContrasena"
+          [(ngModel)]="nuevaContrasena"
+          required
+          minlength="6"
+          placeholder="Mínimo 6 caracteres"
+        />
+      </div>
+
+      <!-- Confirmar contraseña -->
+      <div class="input-group">
+        <label for="confirmarContrasena">Confirmar Contraseña</label>
+        <input
+          type="password"
+          id="confirmarContrasena"
+          name="confirmarContrasena"
+          [(ngModel)]="confirmarContrasena"
+          required
+          minlength="6"
+          placeholder="Repite tu nueva contraseña"
+        />
+      </div>
+
+
+
+      <!-- Botón de enviar -->
+      <button type="submit" class="btn-primary" [disabled]="form.invalid" (click)="reenviarContrasena()">
+        Cambiar Contraseña
+      </button>
+    </form>
+
+    <p class="info-text">
+      Asegúrate de que ambas contraseñas coincidan
+    </p>
+  </div>
+</div>

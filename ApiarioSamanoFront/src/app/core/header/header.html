@@ -1,0 +1,56 @@
+<header class="header">
+  <div class="logo">
+    <img src="logopagina.png" alt="Logo Empresa" />
+  </div>
+
+  <div class="profile">
+    <button class="user-btn" (click)="toggleProfile()">
+      {{ userName }}
+    </button>
+
+    <div class="profile-panel" [class.open]="showProfile" (click)="$event.stopPropagation()">
+      <!-- Header del panel -->
+      <div class="panel-header">
+        <h3 class="heading">Perfil de Usuario</h3>
+        <button class="close-btn" (click)="closeProfile()">×</button>
+      </div>
+
+      <!-- Avatar Section -->
+      <div class="avatar-section">
+        <div class="avatar-circle">
+          <span class="avatar-initials">{{ getInitials() }}</span>
+        </div>
+        <h4 class="avatar-name">{{ nombreCompleto }}</h4>
+      </div>
+
+      <!-- Info Section -->
+      <div class="info-section">
+        <div class="info-item">
+          <span class="info-icon">📧</span>
+          <div class="info-content">
+            <span class="info-label">Email</span>
+            <span class="info-value">{{ userEmail }}</span>
+          </div>
+        </div>
+
+        <div class="info-item">
+          <span class="info-icon">👤</span>
+          <div class="info-content">
+            <span class="info-label">Rol</span>
+            <span class="info-value">{{ userRole }}</span>
+          </div>
+        </div>
+
+      
+
+       
+      </div>
+
+      <!-- Botón de cerrar sesión -->
+      <button class="logout-btn" (click)="logout()">
+        <span class="logout-icon"></span>
+        Cerrar Sesión
+      </button>
+    </div>
+  </div>
+</header>

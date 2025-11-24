@@ -1,0 +1,322 @@
+<!-- Contenido principal -->
+<div class="medicamentos-container">
+  <!-- Header y botón agregar -->
+  <div class="header">
+    <h2>Gestión de Medicamentos</h2>
+    <div class="actions">
+      <div class="search-box">
+        <input
+          type="text"
+          [(ngModel)]="terminoBusqueda"
+          (input)="onBuscarChange()"
+          placeholder="Buscar medicamentos por nombre, descripción o proveedor..."
+        >
+        <span class="material-icons search-icon">search</span>
+      </div>
+      <button 
+        (click)="abrirFormulario()"
+        class="btn add"
+      >
+        <span class="material-icons">add</span>
+        Agregar Medicamento
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="cargando" class="loading">
+    <div class="spinner"></div>
+    <p>Cargando medicamentos...</p>
+  </div>
+
+  <!-- Catálogo de medicamentos -->
+<!-- Catálogo de medicamentos -->
+<div *ngIf="!cargando" class="catalogo">
+  <div 
+    *ngFor="let medicamento of filtrarMedicamentos(); trackBy: trackByMedicamentoId"
+    class="card fade-in"
+  >
+    <div class="card-image">
+      <img
+        *ngIf="medicamento.foto"
+        [src]="'data:image/jpeg;base64,' + medicamento.foto"
+        [alt]="medicamento.nombre"
+        class="materia-imagen"
+      >
+      <div 
+        *ngIf="!medicamento.foto"
+        class="no-imagen"
+      >
+        💊
+      </div>
+    </div>
+    
+    <div class="card-content">
+      <h3>{{ medicamento.nombre }}</h3>
+      <div class="card-info">
+        <strong>Descripción:</strong>
+        <span class="card-info-value">{{ medicamento.descripcion }}</span>
+      </div>
+      <div class="card-info">
+        <strong>Cantidad:</strong>
+        <span class="card-info-value">{{ medicamento.cantidad }}</span>
+      </div>
+      <div class="card-info">
+        <strong>Proveedor:</strong>
+        <span class="card-info-value">{{ obtenerNombreProveedor(medicamento) }}</span>
+      </div>
+    </div>
+
+    <div class="card-actions">
+      <button
+        (click)="editarMedicamento(medicamento)"
+        class="btn edit"
+        title="Editar medicamento"
+      >
+        <span class="material-icons">edit</span>
+      </button>
+      <button
+        (click)="abrirModalConfirmacion(medicamento)"
+        class="btn delete"
+        title="Eliminar medicamento"
+      >
+        <span class="material-icons">delete</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+  <!-- Estado vacío -->
+  <div *ngIf="filtrarMedicamentos().length === 0 && !cargando" class="empty-state">
+    <div class="empty-state-icon">💊</div>
+    <h3>
+      {{ terminoBusqueda ? 'No se encontraron medicamentos' : 'No hay medicamentos registrados' }}
+    </h3>
+    <p>
+      {{ terminoBusqueda ? 'Intenta con otros términos de búsqueda' : 'Comienza agregando tu primer medicamento' }}
+    </p>
+    <button 
+      (click)="abrirFormulario()"
+      class="btn add"
+    >
+      <span class="material-icons">add</span>
+      Agregar Primer Medicamento
+    </button>
+  </div>
+</div>
+
+<!-- Modal de formulario -->
+<div *ngIf="mostrarFormulario" class="modal">
+  <div class="modal-content">
+    <h3>
+      {{ editando ? 'Editar Medicamento' : 'Nuevo Medicamento' }}
+    </h3>
+
+    <!-- Formulario -->
+    <form (ngSubmit)="guardarMedicamento()">
+      <!-- Nombre -->
+      <div>
+        <label>
+          Nombre del Medicamento *
+        </label>
+        <input
+          type="text"
+          [(ngModel)]="medicamentoSeleccionado.nombre"
+          name="nombre"
+          required
+          placeholder="Ingrese el nombre del medicamento"
+        >
+      </div>
+
+      <!-- Descripción -->
+      <div>
+        <label>
+          Descripción *
+        </label>
+        <textarea
+          [(ngModel)]="medicamentoSeleccionado.descripcion"
+          name="descripcion"
+          required
+          rows="3"
+          placeholder="Ingrese la descripción del medicamento"
+        ></textarea>
+      </div>
+
+      <!-- Cantidad -->
+        <div>
+        <label>
+          Cantidad *
+        </label>
+        <input
+          type="text"
+          [(ngModel)]="medicamentoSeleccionado.cantidad"
+          name="cantidad"
+          required
+          placeholder="Ingrese la cantidad (solo números)"
+          (keypress)="soloNumeros($event)"
+          (input)="validarCantidad()"
+          (blur)="formatearCantidad()"
+          class="cantidad-input"
+        >
+        <div *ngIf="mostrarErrorCantidad" class="error-message">
+          ⚠️ Por favor, ingresa solo números válidos
+        </div>
+      </div>
+
+      <!-- Almacén -->
+      <div>
+        <label>
+          Almacén *
+        </label>
+        <select
+          [(ngModel)]="medicamentoSeleccionado.idAlmacen"
+          name="idAlmacen"
+          required
+        >
+          <option value="">Seleccione un almacén</option>
+          <option *ngFor="let almacen of almacenes" [value]="almacen.id">
+            {{ almacen.ubicacion || 'Almacén ' + almacen.id }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Proveedor -->
+      <div>
+        <label>
+          Proveedor *
+        </label>
+        <select
+          [(ngModel)]="medicamentoSeleccionado.idProveedor"
+          name="idProveedor"
+          required
+        >
+          <option value="">Seleccione un proveedor</option>
+          <option *ngFor="let proveedor of proveedores" [value]="proveedor.id">
+            {{ proveedor.nombreEmpresa }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Foto - Input para subir archivo (SOLO UNA FOTO) -->
+<div>
+  <label>
+    Fotografía del Medicamento
+  </label>
+  
+  <!-- Mostrar botón de subida solo si NO hay foto -->
+  <div class="file-upload-container" *ngIf="!medicamentoSeleccionado.foto">
+    <input
+      type="file"
+      (change)="onFileSelected($event)"
+      accept="image/*"
+      class="file-input"
+      id="fotoInput"
+    >
+    <label for="fotoInput" class="file-upload-label">
+      <span class="material-icons">add_photo_alternate</span>
+      <span class="file-upload-text">
+        Seleccionar imagen
+      </span>
+    </label>
+  </div>
+
+  <!-- Vista previa de la imagen CENTRADA (solo cuando hay foto) -->
+  <div *ngIf="medicamentoSeleccionado.foto" class="image-preview-container">
+    <div class="image-preview">
+      <img [src]="fotoParaVistaPrevia" alt="Vista previa" class="preview-image">
+      <button type="button" (click)="removeImage()" class="remove-image-btn">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+      <!-- Botones -->
+      <div class="modal-actions">
+        <button
+          type="button"
+          (click)="cerrarFormulario()"
+          class="btn cancel"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="guardando"
+          class="btn save"
+        >
+          <span *ngIf="guardando" class="spinner-small"></span>
+          {{ guardando ? 'Guardando...' : (editando ? 'Actualizar' : 'Guardar') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de confirmación de eliminación -->
+<div *ngIf="mostrarModalConfirmacion" class="modal">
+  <div class="modal-content confirmacion-modal">
+      <div class="confirmacion-icon">
+        <span class="material-icons">warning</span>
+      </div>    <h3>Confirmar Eliminación</h3>
+    
+    <div class="confirmacion-info">
+      <div class="medicamento-media">
+  <img
+    *ngIf="medicamentoAEliminar?.foto"
+    [src]="'data:image/jpeg;base64,' + medicamentoAEliminar?.foto"
+    alt="{{ medicamentoAEliminar?.nombre }}"
+    class="medicamento-thumb"
+  >
+  <div 
+    *ngIf="!medicamentoAEliminar?.foto"
+    class="medicamento-placeholder"
+  >
+   
+  </div>
+</div>
+
+      <div class="medicamento-nombre">{{ medicamentoAEliminar?.nombre }}</div>
+      
+      <div class="medicamento-detalle">
+        <strong>Descripción:</strong>
+        <span>{{ medicamentoAEliminar?.descripcion }}</span>
+      </div>
+      <div class="medicamento-detalle">
+        <strong>Cantidad:</strong>
+        <span>{{ medicamentoAEliminar?.cantidad }}</span>
+      </div>
+      <div class="medicamento-detalle">
+        <strong>Proveedor:</strong>
+        <span>{{ medicamentoAEliminar ? obtenerNombreProveedor(medicamentoAEliminar) : '' }}</span>
+      </div>
+    </div>
+
+    <div class="advertencia">
+      <span class="material-icons">warning</span>
+      <p>
+        ¿Estás seguro de que deseas eliminar este medicamento? 
+        Esta acción no se puede deshacer y se perderán todos los datos asociados.
+      </p>
+    </div>
+
+    <div class="confirmacion-actions">
+      <button
+        (click)="cerrarModalConfirmacion()"
+        class="btn cancel"
+      >
+        <span class="material-icons">close</span>
+        Cancelar
+      </button>
+      <button
+        (click)="confirmarEliminacion()"
+        [disabled]="eliminando"
+        class="btn delete-confirm"
+      >
+        <span *ngIf="eliminando" class="spinner-small"></span>
+        <span *ngIf="!eliminando" class="material-icons">delete</span>
+        {{ eliminando ? 'Eliminando...' : 'Eliminar' }}
+      </button>
+    </div>
+  </div>
+</div>

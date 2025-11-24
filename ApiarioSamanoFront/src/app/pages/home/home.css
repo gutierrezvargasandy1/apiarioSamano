@@ -1,0 +1,101 @@
+.home-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #e3d29d;
+  font-family: "Poppins", sans-serif;
+  color: #4d4141;
+  overflow: hidden;
+}
+
+/* ---- Slideshow ---- */
+.slideshow {
+  position: relative;
+  height: 80vh;
+  background-size: cover;
+  background-position: center;
+  transition: background-image 1s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+   
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  color: rgb(253, 252, 252);
+  max-width: 800px;
+  padding: 2rem;
+  animation: fadeIn 0.5s ease;
+}
+
+.hero-content h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #c4a509;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.hero-content p {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.quote {
+  font-style: italic;
+  color: #ebe8da;
+  font-size: 1.1rem;
+  margin-top: 1rem;
+}
+
+/* ---- About section ---- */
+.about {
+  padding: 3rem 2rem;
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.about h2 {
+  color: #f1b400;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.about p {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+  .hero-content p {
+    font-size: 1rem;
+  }
+}

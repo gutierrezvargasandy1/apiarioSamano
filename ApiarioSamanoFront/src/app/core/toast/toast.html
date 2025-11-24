@@ -1,0 +1,29 @@
+<div class="toast-container">
+  <div 
+    *ngFor="let toast of toasts" 
+    class="toast toast-{{toast.type}}"
+    [@slideIn]
+  >
+    <!-- Icono -->
+    <div class="toast-icon">
+      <span class="icon">{{ getIcon(toast.type) }}</span>
+    </div>
+
+    <!-- Contenido -->
+    <div class="toast-content">
+      <h4 class="toast-title">{{ toast.title }}</h4>
+      <p class="toast-message">{{ toast.message }}</p>
+    </div>
+
+    <!-- Botón cerrar -->
+    <button class="toast-close" (click)="removeToast(toast.id)">
+      <span>✕</span>
+    </button>
+
+    <!-- Barra de progreso -->
+    <div class="toast-progress" 
+         [style.animation-duration.ms]="toast.duration"
+         (animationend)="removeToast(toast.id)">
+    </div>
+  </div>
+</div>

@@ -1,0 +1,249 @@
+/* Contenedor general */
+.otp-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #fef3c7, #fed7aa, #fef3c7);
+  padding: 1rem;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* Tarjeta central */
+.otp-card {
+  background: white;
+  padding: 2rem 2.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+              0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  
+  max-width: 50rem;
+  border-top: 4px solid #f59e0b;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+
+
+/* === SOBRE === */
+.envelope-wrapper {
+  margin-bottom: 2rem;
+  height: 11rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  perspective: 800px; /* ✅ Necesario para que la rotación 3D sea visible */
+}
+
+.envelope {
+  position: relative;
+  z-index: 10;
+  transform-style: preserve-3d;
+}
+
+.envelope-body {
+  position: relative;
+  width: 12rem;
+  height: 8rem;
+}
+
+/* Parte trasera del sobre */
+.envelope-back {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom right, #fed7aa, #fdba74);
+  border-radius: 0.125rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border: 2px solid #fb923c;
+}
+
+/* Líneas del destinatario */
+.address-lines {
+  position: absolute;
+  top: 2rem;
+  left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.line {
+  height: 0.25rem;
+  background: #f59e0b;
+  border-radius: 0.25rem;
+  opacity: 0.4;
+}
+.line-1 { width: 6rem; }
+.line-2 { width: 5rem; }
+.line-3 { width: 4rem; }
+
+/* Sello postal */
+.stamp {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #fb923c;
+  border-radius: 0.25rem;
+  background: #fed7aa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stamp-inner {
+  width: 1rem;
+  height: 1rem;
+  background: #fdba74;
+  border-radius: 50%;
+}
+
+/* === Solapa triangular (flap) === */
+.envelope-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 25;
+  transform-origin: top center;
+  backface-visibility: hidden;
+  transition: transform 0.8s ease-in-out;
+  transform: rotateX(0deg);
+}
+
+
+/* Sombras del flap */
+.flap-svg {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+/* Triángulos laterales */
+.envelope-side-left {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+.envelope-side-right {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+/* === Texto y formulario === */
+h2 {
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: #d97706;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.subtitle {
+  color: #4b5563;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+/* Input */
+input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: 0.5rem;
+  border: 2px solid #fcd34d;
+  border-radius: 0.5rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+input:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
+}
+input::placeholder {
+  color: #d1d5db;
+  letter-spacing: 0.5rem;
+}
+
+/* Botón */
+.btn-verify {
+  width: 100%;
+  background: #fbbf24;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.btn-verify:hover:not(:disabled) {
+  background: #e1c743;
+}
+.btn-verify:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  transform: scale(1);
+}
+.icon-check {
+  font-size: 1.25rem;
+}
+
+/* Texto inferior */
+.info-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 1.5rem;
+}
+.info-text a {
+  color: #f59e0b;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.info-text a:hover {
+  color: #ea580c;
+  text-decoration: underline;
+}
+
+/* Mensaje de éxito */
+.success-message {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #ea580c;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.icon-send {
+  font-size: 1rem;
+}
+
+

@@ -1,0 +1,333 @@
+/* ==================== NAVBAR BASE ==================== */
+.navbar {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+}
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* ==================== BRAND ==================== */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-right: 20px;
+}
+
+.brand-icon::before {
+  content: "🐝";
+  font-size: 28px;
+}
+
+.brand-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: #92400e;
+  white-space: nowrap;
+}
+
+/* ==================== LINKS CONTAINER ==================== */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  padding: 4px 0;
+  
+  /* Ocultar scrollbar pero mantener funcionalidad */
+  scrollbar-width: thin;
+  scrollbar-color: #fbbf24 transparent;
+}
+
+.navbar-links::-webkit-scrollbar {
+  height: 4px;
+}
+
+.navbar-links::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.navbar-links::-webkit-scrollbar-thumb {
+  background: #fbbf24;
+  border-radius: 10px;
+}
+
+.navbar-links::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
+/* ==================== NAV LINKS ==================== */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: transparent;
+  color: #78350f;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+}
+
+.nav-link:hover {
+  background: rgba(251, 191, 36, 0.2);
+  transform: translateY(-2px);
+}
+
+.nav-link.active {
+  background: #fbbf24;
+  color: #78350f;
+  border-color: #f59e0b;
+  box-shadow: 0 4px 8px rgba(251, 191, 36, 0.3);
+}
+
+/* ==================== ICONOS ==================== */
+.nav-icon {
+  font-size: 18px;
+  display: inline-block;
+}
+
+.nav-link:nth-child(1) .nav-icon::before { content: "🏠"; }
+.nav-link:nth-child(2) .nav-icon::before { content: "🏭"; }
+.nav-link:nth-child(3) .nav-icon::before { content: "📋"; }
+.nav-link:nth-child(4) .nav-icon::before { content: "🐝"; }
+.nav-link:nth-child(5) .nav-icon::before { content: "📦"; }
+.nav-link:nth-child(6) .nav-icon::before { content: "🔧"; }
+.nav-link:nth-child(7) .nav-icon::before { content: "💊"; }
+.nav-link:nth-child(8) .nav-icon::before { content: "🌾"; }
+.nav-link:nth-child(9) .nav-icon::before { content: "👥"; }
+.nav-link:nth-child(10) .nav-icon::before { content: "👤"; }
+
+.nav-text {
+  font-size: 14px;
+}
+
+/* ==================== RESPONSIVE BREAKPOINTS ==================== */
+
+/* Tablets y pantallas medianas (hasta 1200px) */
+@media (max-width: 1200px) {
+  .navbar-container {
+    padding: 10px 15px;
+  }
+
+  .brand-text {
+    font-size: 18px;
+  }
+
+  .nav-link {
+    padding: 8px 12px;
+    font-size: 13px;
+    gap: 5px;
+  }
+
+  .nav-icon {
+    font-size: 16px;
+  }
+}
+
+/* Tablets pequeñas (hasta 992px) */
+@media (max-width: 992px) {
+  .navbar-container {
+    padding: 8px 12px;
+  }
+
+  .brand-icon::before {
+    font-size: 24px;
+  }
+
+  .brand-text {
+    font-size: 16px;
+  }
+
+  .navbar-links {
+    gap: 6px;
+  }
+
+  .nav-link {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .nav-text {
+    font-size: 12px;
+  }
+}
+
+/* Móviles grandes (hasta 768px) */
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 8px 10px;
+  }
+
+  .brand-text {
+    font-size: 14px;
+  }
+
+  .navbar-links {
+    gap: 4px;
+  }
+
+  .nav-link {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .nav-icon {
+    font-size: 14px;
+  }
+
+  .nav-text {
+    font-size: 11px;
+  }
+}
+
+/* Móviles pequeños (hasta 576px) - Solo iconos */
+@media (max-width: 576px) {
+  .brand-text {
+    display: none;
+  }
+
+  .navbar-links {
+    gap: 2px;
+  }
+
+  .nav-link {
+    padding: 8px;
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  .nav-text {
+    display: none;
+  }
+
+  .nav-icon {
+    font-size: 20px;
+  }
+
+  /* Mostrar texto en hover/active en móviles */
+  .nav-link:hover .nav-text,
+  .nav-link.active .nav-text {
+    display: none; /* Mantener oculto incluso en hover para ahorrar espacio */
+  }
+}
+
+/* Móviles muy pequeños (hasta 400px) */
+@media (max-width: 400px) {
+  .navbar-container {
+    padding: 6px 8px;
+  }
+
+  .brand-icon::before {
+    font-size: 20px;
+  }
+
+  .nav-link {
+    padding: 6px;
+    min-width: 36px;
+  }
+
+  .nav-icon {
+    font-size: 18px;
+  }
+}
+
+/* ==================== SCROLLBAR HORIZONTAL HINT ==================== */
+/* Gradiente sutil para indicar que hay más contenido */
+.navbar-links::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to left, rgba(254, 243, 199, 0.9), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.navbar-links:not(:hover)::after {
+  opacity: 1;
+}
+
+/* ==================== ANIMACIONES ==================== */
+@keyframes slideIn {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.navbar {
+  animation: slideIn 0.3s ease;
+}
+
+/* ==================== ACCESIBILIDAD ==================== */
+.nav-link:focus {
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+.nav-link:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ==================== SMOOTH SCROLL ==================== */
+.navbar-links {
+  scroll-behavior: smooth;
+}
+
+/* ==================== TOOLTIP PARA MÓVILES ==================== */
+@media (max-width: 576px) {
+  .nav-link {
+    position: relative;
+  }
+
+  .nav-link::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: #78350f;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1001;
+  }
+
+  .nav-link:hover::after {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}

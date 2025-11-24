@@ -1,0 +1,372 @@
+<div class="container">
+    <!-- Panel Izquierdo - Lista de Herramientas -->
+    <div class="left-panel">
+        <div class="panel-header">
+            <h2><span>🔧</span> Herramientas</h2>
+            <button class="btn-nuevo" (click)="abrirFormulario()">
+                <span class="material-icons">add</span>
+                Nueva
+            </button>
+        </div>
+        
+        <!-- Buscador -->
+        <div class="search-box">
+            <input 
+                type="text" 
+                placeholder="Buscar herramienta..."
+                [(ngModel)]="terminoBusqueda"
+            />
+        <span class="material-icons search-icon">search</span>        </div>
+        
+        <div class="herramientas-lista">
+            <!-- Estados de carga -->
+            <div *ngIf="cargando" class="empty-state">
+                <div class="empty-state-icon">⏳</div>
+                <p>Cargando herramientas...</p>
+            </div>
+
+            <!-- Lista de herramientas -->
+            <div 
+                *ngFor="let herramienta of filtrarHerramientas()" 
+                class="herramienta-item"
+                [class.active]="herramientaSeleccionada?.id === herramienta.id"
+                (click)="seleccionarHerramienta(herramienta)">
+                
+                <!-- Imagen de la herramienta -->
+                <div class="herramienta-imagen">
+                    <img 
+                        *ngIf="herramienta.foto" 
+                        [src]="getFotoUrl(herramienta.foto)" 
+                        [alt]="herramienta.nombre"
+                    />
+                    <div *ngIf="!herramienta.foto" class="imagen-placeholder">
+                        🔧
+                    </div>
+                </div>
+
+                <div class="herramienta-info">
+                    <div class="herramienta-header">
+                        <span class="herramienta-nombre">{{ herramienta.nombre }}</span>
+                        <span class="herramienta-badge">
+                            ID: {{ herramienta.id }}
+                        </span>
+                    </div>
+                    
+                    <div class="herramienta-datos">
+                        <div class="dato-row" *ngIf="herramienta.proveedor">
+                            <span class="dato-label">🏢 Proveedor:</span>
+                            <span class="dato-valor">{{ herramienta.proveedor.nombreEmpresa }}</span>
+                        </div>
+                        <div class="dato-row" *ngIf="herramienta.proveedor">
+                            <span class="dato-label">📞 Teléfono:</span>
+                            <span class="dato-valor">{{ herramienta.proveedor.numTelefono }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="botones-container">
+                        <button class="btn btn-editar" (click)="editarHerramienta(herramienta); $event.stopPropagation()">
+                            ✏️ Editar
+                        </button>
+                        <button class="btn btn-eliminar" (click)="abrirModalConfirmacion(herramienta, $event)">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado vacío -->
+            <div *ngIf="!cargando && filtrarHerramientas().length === 0" class="empty-state">
+                <div class="empty-state-icon">🔧</div>
+                <h3>No hay herramientas registradas</h3>
+                <p>Comienza agregando tu primera herramienta</p>
+                <button class="btn-nuevo" (click)="abrirFormulario()">
+                    <span class="material-icons">add</span>
+                    Agregar Herramienta
+                </button>
+            </div>
+        </div>
+    </div>
+
+<!-- Panel Derecho - Detalles de la Herramienta -->
+<!-- Panel Derecho - Detalles de la Herramienta -->
+<div class="right-panel">
+    <div class="detalle-container">
+        <div class="detalle-header">
+            <h3 *ngIf="!herramientaSeleccionada">🔧 Selecciona una herramienta</h3>
+            <h3 *ngIf="herramientaSeleccionada">
+                🔧 {{ herramientaSeleccionada.nombre }}
+            </h3>
+        </div>
+
+        <!-- Estado vacío -->
+        <div *ngIf="!herramientaSeleccionada" class="empty-state">
+            <div class="empty-state-icon">🔧</div>
+            <p>Selecciona una herramienta de la lista para ver sus detalles</p>
+        </div>
+
+        <!-- Detalles de la herramienta seleccionada - DISEÑO UNIFICADO -->
+        <div *ngIf="herramientaSeleccionada" class="info-card-unica">
+            
+            <!-- Sección de Información General con diseño de cards -->
+            <div class="info-section">
+                <div class="info-section-title">📋 Información General</div>
+                
+                <div class="info-grid-compacto">
+                    <!-- Imagen de la herramienta -->
+                    <div class="info-imagen-container">
+                        <img 
+                            *ngIf="herramientaSeleccionada.foto" 
+                            [src]="getFotoUrl(herramientaSeleccionada.foto)" 
+                            [alt]="herramientaSeleccionada.nombre"
+                            class="info-imagen"
+                        />
+                        <div *ngIf="!herramientaSeleccionada.foto" class="info-imagen-placeholder">
+                            🔧
+                        </div>
+                    </div>
+
+                    <!-- Datos de información general en cards -->
+                    <div class="info-datos-grid">
+                        <div class="info-dato">
+                            <span class="info-dato-label">Nombre:</span>
+                            <span class="info-dato-value">{{ herramientaSeleccionada.nombre }}</span>
+                        </div>
+
+                                                <div class="info-dato">
+                            <span class="info-dato-label">Almacen:</span>
+                            <span class="info-dato-value">{{ obtenerNombreAlmacen( herramientaSeleccionada.idAlmacen)}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información del Proveedor - Mismo diseño -->
+            <div *ngIf="herramientaSeleccionada.proveedor" class="info-section">
+                <div class="info-section-title">🏢 Información del Proveedor</div>
+                
+                <div class="info-grid-compacto">
+                    <!-- Foto del proveedor -->
+                    <div class="info-imagen-container">
+                        <img 
+                            *ngIf="herramientaSeleccionada.proveedor.fotografia"
+                            [src]="'data:image/jpeg;base64,' + herramientaSeleccionada.proveedor.fotografia" 
+                            alt="Foto del proveedor"
+                            class="info-imagen"
+                        />
+                        <div *ngIf="!herramientaSeleccionada.proveedor.fotografia" class="info-imagen-placeholder">
+                            👤
+                        </div>
+                    </div>
+
+                    <!-- Datos del proveedor en cards -->
+                    <div class="info-datos-grid">
+                        <div class="info-dato" *ngIf="herramientaSeleccionada.proveedor.nombreEmpresa">
+                            <span class="info-dato-label">Empresa:</span>
+                            <span class="info-dato-value">{{ herramientaSeleccionada.proveedor.nombreEmpresa }}</span>
+                        </div>
+                        <div class="info-dato" *ngIf="herramientaSeleccionada.proveedor.nombreRepresentante">
+                            <span class="info-dato-label">Representante:</span>
+                            <span class="info-dato-value">{{ herramientaSeleccionada.proveedor.nombreRepresentante }}</span>
+                        </div>
+                        <div class="info-dato" *ngIf="herramientaSeleccionada.proveedor.numTelefono">
+                            <span class="info-dato-label">Teléfono:</span>
+                            <span class="info-dato-value">{{ herramientaSeleccionada.proveedor.numTelefono }}</span>
+                        </div>
+                        <div class="info-dato" *ngIf="herramientaSeleccionada.proveedor.materialProvee">
+                            <span class="info-dato-label">Material:</span>
+                            <span class="info-dato-value">{{ herramientaSeleccionada.proveedor.materialProvee }}</span>
+                        </div>
+                        <div class="info-dato" *ngIf="herramientaSeleccionada.proveedor.id">
+                            <span class="info-dato-label">ID Proveedor:</span>
+                            <span class="info-dato-value">{{ herramientaSeleccionada.proveedor.id }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Modal para Nueva/Editar Herramienta -->
+<div class="modal" *ngIf="mostrarFormulario">
+    <div class="modal-content">
+        <h3>{{ editando ? 'Editar Herramienta' : 'Nueva Herramienta' }}</h3>
+
+        <form (ngSubmit)="guardarHerramienta()">
+            <div class="form-group">
+                <label class="required">Nombre de la Herramienta</label>
+                <input 
+                    type="text" 
+                    [(ngModel)]="formHerramienta.nombre" 
+                    name="nombre" 
+                    required 
+                    placeholder="Ej: Extractor de miel"
+                    [disabled]="guardando"
+                />
+            </div>
+
+            <div class="form-group">
+                <label class="required">Almacén</label>
+                <select 
+                    [(ngModel)]="formHerramienta.idAlmacen" 
+                    name="idAlmacen" 
+                    required 
+                    [disabled]="cargandoAlmacenes || guardando"
+                >
+                    <option value="">Seleccione un almacén...</option>
+                    <option *ngFor="let almacen of almacenes" [value]="almacen.id">
+                        {{ almacen.numeroSeguimiento }} - {{ almacen.ubicacion }}
+                    </option>
+                </select>
+                <small *ngIf="cargandoAlmacenes" class="text-muted">Cargando almacenes...</small>
+            </div>
+
+            <div class="form-group">
+                <label class="required">Proveedor</label>
+                <select 
+                    [(ngModel)]="formHerramienta.idProveedor" 
+                    name="idProveedor" 
+                    required 
+                    [disabled]="cargandoProveedores || guardando"
+                >
+                    <option value="">Seleccione un proveedor...</option>
+                    <option *ngFor="let proveedor of proveedores" [value]="proveedor.id">
+                        {{ proveedor.nombreEmpresa }}
+                    </option>
+                </select>
+                <small *ngIf="cargandoProveedores" class="text-muted">Cargando proveedores...</small>
+            </div>
+
+            <div class="form-group">
+                <label>Fotografía</label>
+                
+                <!-- Botón para seleccionar imagen solo si NO hay foto -->
+                <div class="file-input-container" *ngIf="!fotoPreview">
+                    <input 
+                        type="file" 
+                        id="foto"
+                        (change)="onFileSelected($event)" 
+                        accept="image/*"
+                        [disabled]="guardando"
+                    />
+                    <label for="foto" class="file-input-label">
+                        <span class="material-icons">add_photo_alternate</span>
+                        Seleccionar Imagen
+                    </label>
+                </div>
+
+                <!-- Preview de la imagen -->
+                <div class="foto-preview" *ngIf="fotoPreview">
+                    <img [src]="fotoPreview" alt="Preview" class="foto-preview-img" />
+                    <button 
+                        type="button" 
+                        class="btn-eliminar-foto"
+                        (click)="eliminarFoto()"
+                        title="Eliminar foto"
+                        [disabled]="guardando"
+                    >
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
+
+                <!-- Información del archivo -->
+                <div class="file-info" *ngIf="archivoSeleccionado">
+                    <small>Archivo seleccionado: {{ archivoSeleccionado.name }}</small>
+                    <small>Tamaño: {{ (archivoSeleccionado.size / 1024 / 1024).toFixed(2) }} MB</small>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button 
+                    class="btn save" 
+                    type="submit" 
+                    [disabled]="guardando"
+                >
+                    <span class="spinner-small" *ngIf="guardando"></span>
+                    {{ guardando ? 'Guardando...' : 'Guardar' }}
+                </button>
+                <button 
+                    class="btn cancel" 
+                    type="button" 
+                    (click)="cerrarFormulario()"
+                    [disabled]="guardando"
+                >
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar herramienta -->
+<div class="modal" *ngIf="mostrarModalConfirmacion">
+    <div class="modal-content confirmacion-modal">
+        <div class="confirmacion-icon">
+            <span class="material-icons">warning</span>
+        </div>
+        
+        <h3>¿Estás seguro de eliminar esta herramienta?</h3>
+        
+        <div class="confirmacion-info">
+            <div class="herramienta-imagen-grande">
+                <img 
+                    [src]="getFotoUrl(herramientaAEliminar?.foto)" 
+                    [alt]="herramientaAEliminar?.nombre" 
+                    class="imagen-eliminar"
+                />
+                <div *ngIf="!herramientaAEliminar?.foto" class="no-imagen-grande">
+                    🔧
+                </div>
+            </div>
+            
+            <div class="herramienta-info">
+                <div class="herramienta-nombre">
+                    <strong>{{ herramientaAEliminar?.nombre }}</strong>
+                </div>
+                <div class="herramienta-detalles">
+                    <div class="herramienta-detalle" *ngIf="herramientaAEliminar?.proveedor">
+                        <strong>Proveedor:</strong> 
+                        <span>{{ herramientaAEliminar?.proveedor?.nombreEmpresa }}</span>
+                    </div>
+                    <div class="herramienta-detalle" *ngIf="herramientaAEliminar?.proveedor?.numTelefono">
+                        <strong>Teléfono:</strong> 
+                        <span>{{ herramientaAEliminar?.proveedor?.numTelefono }}</span>
+                    </div>
+                    <div class="herramienta-detalle">
+                        <strong>ID:</strong> 
+                        <span>{{ herramientaAEliminar?.id }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="advertencia">
+            <span class="material-icons">info</span>
+            <p>Esta acción no se puede deshacer. La herramienta será eliminada permanentemente del sistema.</p>
+        </div>
+
+        <div class="modal-actions confirmacion-actions">
+            <button 
+                class="btn cancel" 
+                type="button" 
+                (click)="cerrarModalConfirmacion()"
+                [disabled]="eliminando"
+            >
+                <span class="material-icons">close</span> 
+                Cancelar
+            </button>
+            <button 
+                class="btn delete-confirm" 
+                type="button" 
+                (click)="confirmarEliminacion()"
+                [disabled]="eliminando"
+            >
+                <span class="material-icons" *ngIf="!eliminando">delete</span>
+                <span class="spinner-small" *ngIf="eliminando"></span>
+                {{ eliminando ? 'Eliminando...' : 'Eliminar' }}
+            </button>
+        </div>
+    </div>
+</div>

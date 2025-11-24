@@ -1,0 +1,206 @@
+version: "3.9"
+
+services:
+  
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: always
+    ports:
+      - "1883:1883"      # Puerto MQTT
+      - "9001:9001"      # WebSocket MQTT (opcional)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - apiario-network
+
+   
+  
+
+  # Servicio Ollama
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - apiario-network
+
+  # Base de datos PostgreSQL
+  postgres:
+    image: microservice_postgres
+    container_name: microservice_postgres
+    environment:
+      POSTGRES_DB: UsuariosDB
+      POSTGRES_USER: apiario
+      POSTGRES_PASSWORD: apiario123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - apiario-network
+
+  # MicroServiceAuth
+  microserviceauth:
+    image: microserviceauth:1.0
+    container_name: MicroServiceAuth
+    depends_on:
+      - postgres
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/UsuariosDB
+      SPRING_DATASOURCE_USERNAME: apiario
+      SPRING_DATASOURCE_PASSWORD: apiario123
+      MICROSERVICIO_CODIGOS_URL: http://microservicegeneradorcodigos:8084/api/codigos/otp
+      MICROSERVICIO_EMAIL_URL: http://microservicenotificaciones:8083/api/email/enviarOtp
+    networks:
+      - apiario-network
+
+  # MicroServiceUsuarios
+  microserviceusuarios:
+    image: microserviceusuario:1.0
+    container_name: MicroServiceUsuarios
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/UsuariosDB
+      SPRING_DATASOURCE_USERNAME: apiario
+      SPRING_DATASOURCE_PASSWORD: apiario123
+      MICROSERVICIO_CODIGOS_URL: http://microservicegeneradorcodigos:8084/api/codigos/contrasena
+      MICROSERVICIO_EMAIL_URL: http://microservicenotificaciones:8083/api/email/enviarContrasena
+    networks:
+      - apiario-network
+
+  # MicroServiceNotificacionesGmail
+  microservicenotificaciones:
+    image: microservicenotificacionesgmail:1.0
+    container_name: MicroServiceNotificaciones
+    ports:
+      - "8083:8083"
+    networks:
+      - apiario-network
+
+  # MicroServiceGeneradorCodigos
+  microservicegeneradorcodigos:
+    image: microservicegeneradorcodigo:1.0
+    container_name: MicroServiceGeneradorCodigos
+    ports:
+      - "8084:8084"
+    networks:
+      - apiario-network
+
+  # MicroServiceGestorDeArchivos
+  microservicegestordearchivos:
+    image: microservicegestordearchivos:1.0
+    container_name: MicroServiceGestorDeArchivos
+    ports:
+      - "8089:8089"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/FileStorageDB
+      SPRING_DATASOURCE_USERNAME: apiario
+      SPRING_DATASOURCE_PASSWORD: apiario123
+      MICROSERVICIO_CODIGOS_URL: http://microservicegeneradorcodigos:8084/api/codigos/archivo
+      APP_STORAGE_LOCAL_DIRECTORY: /home/usuario/archivos-app
+      APP_STORAGE_MAX_FILE_SIZE: 10485760
+      APP_SERVER_URL: http://localhost:8089
+    volumes:
+      - ./archivos-app:/home/usuario/archivos-app
+    networks:
+      - apiario-network
+
+  # MicroServiceProveedores
+  microserviceproveedores:
+    image: microserviceproveedores:1.0
+    container_name: MicroServiceProveedores
+    depends_on:
+      - postgres
+      - microservicegestordearchivos
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ProveedoresDB
+      SPRING_DATASOURCE_USERNAME: apiario
+      SPRING_DATASOURCE_PASSWORD: apiario123
+      MICROSERVICIO_GESTORARCHIVOS_URL: http://microservicegestordearchivos:8089
+    networks:
+      - apiario-network
+
+  # MicroServiceApiarios
+  microserviceapiarios:
+    image: microserviceapiarios:1.0
+    container_name: MicroServiceApiarios
+    depends_on:
+      - postgres
+      - ollama
+      - mosquitto
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ApiariosDB
+      SPRING_DATASOURCE_USERNAME: apiario
+      SPRING_DATASOURCE_PASSWORD: apiario123
+      MICROSERVICIO_ALMACEN: http://microservicealmacen:8081/api/medicamentos
+      OLLAMA_URL: http://ollama:11434 
+      OLLAMA_MODEL: gemma3:4b
+      TEMPERATURAAPI: https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current_weather=true
+      MQTT_BROKER: "tcp://mosquitto:1883"
+      MQTT_CLIENT_ID: "SmartBeeServer"
+      MQTT_TOPIC_BASE: "apiarios/apiario_001/comandos/"
+    networks:
+      - apiario-network
+
+  # MicroServiceAlmacen
+  microservicealmacen:
+    image: microservicealmacen:1.0
+    container_name: MicroServiceAlmacen
+    depends_on:
+      - postgres
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/AlmacenDB
+      SPRING_DATASOURCE_USERNAME: apiario
+      SPRING_DATASOURCE_PASSWORD: apiario123
+      MICROSERVICIO_CODIGOS_URL: http://microservicegeneradorcodigos:8084/api/codigos
+      MICROSERVICIO_PROVEEDORES: http://microserviceproveedores:8086/api/proveedores
+      MICROSERVICIO_PRODUCCION: http://microserviceproduccion:8087
+    networks:
+      - apiario-network
+
+  # MicroServiceProduccion
+  microserviceproduccion:
+    image: microserviceproduccion:1.0
+    container_name: MicroServiceProduccion
+    depends_on:
+      - postgres
+      - ollama  
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ProduccionDB
+      SPRING_DATASOURCE_USERNAME: apiario
+      SPRING_DATASOURCE_PASSWORD: apiario123
+      MICROSERVICIO_ALMACEN: http://microservicealmacen:8081/api/almacenes
+      MICROSERVICIO_CODIGOS_URL: http://microservicegeneradorcodigos:8084/api/codigos
+      OLLAMA_URL: http://ollama:11434 
+      OLLAMA_MODEL: gemma3:4b
+    networks:
+      - apiario-network
+
+volumes:
+  pgdata:
+  ollama_data:  
+
+networks:
+  apiario-network:
+    driver: bridge

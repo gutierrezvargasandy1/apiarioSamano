@@ -1,0 +1,220 @@
+<div class="container">
+    <!-- Panel Izquierdo -->
+    <div class="left-panel">
+        <div class="panel-header">
+            <h2><span class="bee-icon">🐝</span> Registro de Cosechas</h2>
+            <button class="btn-nuevo-lote" (click)="abrirModalCosecha()">
+                <span>➕</span> Nueva Cosecha
+            </button>
+        </div>
+
+        <div class="search-box">
+            <input 
+                type="text" 
+                placeholder="Buscar por tipo, calidad, ID o lote..."
+                [(ngModel)]="terminoBusqueda"
+                (input)="filtrarCosechas()"
+            />
+            <span class="search-icon">🔍</span>
+        </div>
+        
+        <!-- Cosechas dinámicas -->
+        <div *ngIf="cargando" class="loading">
+            <div class="spinner"></div>
+            <p>Cargando cosechas...</p>
+        </div>
+
+        <div *ngIf="!cargando && cosechasFiltradas.length === 0" class="empty-state">
+            <p>No se encontraron cosechas</p>
+        </div>
+
+        <div *ngFor="let cosecha of cosechasFiltradas" class="cosecha-item">
+            <div class="cosecha-header">
+                <span class="cosecha-numero">Cosecha #{{ cosecha.id || 'N/A' }}</span>
+                <span class="cosecha-fecha">{{ formatearFecha(cosecha.fechaCosecha) }}</span>
+            </div>
+            <div class="cosecha-datos">
+                <div class="dato-row">
+                    <span class="dato-label">🍯 Tipo:</span>
+                    <span class="dato-valor">{{ cosecha.tipoCosecha }}</span>
+                </div>
+                <div class="dato-row">
+                    <span class="dato-label">⭐ Calidad:</span>
+                    <span class="dato-valor">{{ cosecha.calidad }}</span>
+                </div>
+                <div class="dato-row">
+                    <span class="dato-label">📦 Cantidad:</span>
+                    <span class="dato-valor">{{ formatearCantidad(cosecha.cantidad) }} kg</span>
+                </div>
+                <div class="dato-row">
+                    <span class="dato-label">🏺 Apiario:</span>
+                    <span class="dato-valor">#{{ cosecha.idApiario }}</span>
+                </div>
+            </div>
+            <div class="botones-container">
+                <button class="btn btn-rendimiento" (click)="abrirModalRendimiento(cosecha)">📊 Rendimiento</button>
+                <button class="btn btn-editar" (click)="editarCosecha(cosecha.id!)">✏️ Editar</button>
+                <button class="btn btn-eliminar" (click)="eliminarCosecha(cosecha, $event)">🗑️ Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Derecho -->
+    <div class="right-panel">
+        <!-- Gráfica de Rendimiento -->
+        
+
+        <!-- Sugerencias de la IA -->
+        <div class="sugerencias-container">
+            <div class="sugerencias-header">
+                <h3>💡 Sugerencias de Mejora</h3>
+                <span class="badge-ia" *ngIf="!cargandoSugerencias && sugerenciasIA.length > 0">🤖 Generado por IA</span>
+            </div>
+
+            <!-- Loading de sugerencias -->
+            <div *ngIf="cargandoSugerencias" class="loading-sugerencias">
+                <div class="spinner-small"></div>
+                <p>Generando sugerencias...</p>
+            </div>
+
+            <!-- Sugerencias dinámicas de la IA -->
+            <div *ngIf="!cargandoSugerencias">
+                <!-- Mensaje cuando no hay sugerencias -->
+                <div *ngIf="sugerenciasIA.length === 0" class="empty-state-sugerencias">
+                    <p>⚠️ No se pudieron generar sugerencias</p>
+                    <small>El análisis de IA no generó recomendaciones procesables</small>
+                </div>
+                
+                <!-- Lista de sugerencias -->
+                <div class="sugerencia-item" *ngFor="let sugerencia of sugerenciasIA">
+                    <div class="sugerencia-titulo">{{ sugerencia.titulo }}</div>
+                    <div class="sugerencia-texto">{{ sugerencia.texto }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Cosecha -->
+    <div class="modal-overlay" [class.active]="mostrarModalCosecha">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Nueva Cosecha</h3>
+                <button class="btn-close" (click)="cerrarModalCosecha()">×</button>
+            </div>
+            <form (ngSubmit)="guardarCosecha()">
+                <div class="form-group">
+                    <label>Lote</label>
+                    <select [(ngModel)]="formCosecha.idLote" name="idLote" required>
+                        <option value="">Seleccione un lote...</option>
+                        <option *ngFor="let lote of lotes" [value]="lote.id">
+                            {{ lote.numeroSeguimiento }} - {{ lote.tipoProducto }} 
+                            (Almacén: {{ lote.idAlmacen }})
+                        </option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tipo de Cosecha</label>
+                    <select [(ngModel)]="formCosecha.tipoCosecha" name="tipoCosecha" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Miel">Miel</option>
+                        <option value="Polen">Polen</option>
+                        <option value="Propóleo">Propóleo</option>
+                        <option value="Jalea Real">Jalea Real</option>
+                        <option value="Cera">Cera</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Calidad</label>
+                    <select [(ngModel)]="formCosecha.calidad" name="calidad" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Excelente">Excelente</option>
+                        <option value="Buena">Buena</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Baja">Baja</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Cantidad (kg)</label>
+                    <input type="number" step="0.01" [(ngModel)]="formCosecha.cantidad" 
+                           name="cantidad" required placeholder="Ej: 25.5">
+                </div>
+                
+                <div class="form-group">
+                    <label>Apiario</label>
+                    <select [(ngModel)]="formCosecha.idApiario" name="idApiario" required>
+                        <option value="">Seleccione un apiario...</option>
+                        <option *ngFor="let apiario of apiarios" [value]="apiario.id">
+                            Apiario #{{ apiario.numeroApiario }} - {{ apiario.ubicacion }} 
+                            (Salud: {{ apiario.salud }})
+                        </option>
+                    </select>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalCosecha()">Cancelar</button>
+                    <button type="submit" class="btn-modal btn-guardar" [disabled]="cargando">
+                        {{ cargando ? 'Guardando...' : 'Guardar' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Grande para Rendimiento Individual con Chat IA -->
+    <div class="modal-overlay modal-grande" [class.active]="mostrarModalRendimiento">
+        <div class="modal modal-grande-content">
+            <div class="modal-header">
+                <h3>📊 Análisis de Rendimiento - Cosecha #{{ cosechaSeleccionada?.id }}</h3>
+                <button class="btn-close" (click)="cerrarModalRendimiento()">×</button>
+            </div>
+            <div class="modal-body-grande">
+                <div class="rendimiento-container">
+                    <!-- Información de la Cosecha -->
+                    <div class="info-cosecha">
+                        <h4>📋 Información de la Cosecha</h4>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Fecha:</span>
+                                <span class="info-value">{{ formatearFecha(cosechaSeleccionada?.fechaCosecha) }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Tipo:</span>
+                                <span class="info-value">{{ cosechaSeleccionada?.tipoCosecha || 'N/A' }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Calidad:</span>
+                                <span class="info-value">{{ cosechaSeleccionada?.calidad || 'N/A' }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Cantidad:</span>
+                                <span class="info-value">{{ formatearCantidad(cosechaSeleccionada?.cantidad) }} kg</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Apiario:</span>
+                                <span class="info-value">#{{ cosechaSeleccionada?.idApiario || 'N/A' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfica de Rendimiento Individual -->
+                    <div class="grafica-individual">
+                        <h4>📈 Estadísticas de Rendimiento</h4>
+                        <canvas id="rendimientoIndividualChart" style="max-height: 400px;"></canvas>
+                    </div>
+
+                    <!-- ✅ SECCIÓN DE CHAT CON IA -->
+                
+
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+</div>

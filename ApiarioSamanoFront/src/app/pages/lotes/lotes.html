@@ -1,0 +1,174 @@
+<div class="container">
+    <!-- Panel Izquierdo - Lista de Lotes -->
+    <div class="left-panel">
+        <div class="panel-header">
+            <h2><span>📦</span> Lotes</h2>
+            <button class="btn-nuevo-lote" (click)="abrirModalLote()">
+                <span>➕</span> Nuevo
+            </button>
+        </div>
+        
+        <!-- Buscador -->
+        <div class="search-box">
+            <input 
+                type="text" 
+                placeholder="Buscar por número, tipo o ID..."
+                [(ngModel)]="terminoBusqueda"
+            />
+            <span class="search-icon">🔍</span>
+        </div>
+        
+        <div class="lotes-lista">
+            <div 
+                *ngFor="let lote of filtrarLotes()" 
+                class="lote-item"
+                [class.active]="loteSeleccionado?.id === lote.id"
+                (click)="seleccionarLote(lote)">
+                <div class="lote-header">
+                    <span class="lote-numero">Lote #{{ lote.numeroSeguimiento }}</span>
+                    <span class="lote-badge" [ngClass]="obtenerClaseBadge(lote.tipoProducto)">
+                        {{ lote.tipoProducto }}
+                    </span>
+                </div>
+                <div class="lote-datos">
+                    <div class="dato-row">
+                        <span class="dato-label">📅 Creación:</span>
+                        <span class="dato-valor">{{ formatearFecha(lote.fechaCreacion) }}</span>
+                    </div>
+                    <div class="dato-row">
+                        <span class="dato-label">🏭 Almacén:</span>
+                        <span class="dato-valor">ID: {{ lote.idAlmacen }}</span>
+                    </div>
+                    <div class="dato-row">
+                        <span class="dato-label">🆔 ID:</span>
+                        <span class="dato-valor">{{ lote.id }}</span>
+                    </div>
+                </div>
+<div class="botones-container">
+    <button class="btn btn-editar" (click)="editarLote(lote, $event)">
+        ✏️ Editar
+    </button>
+    <button class="btn btn-eliminar" (click)="eliminarLote(lote, $event)">
+        🗑️ Eliminar
+    </button>
+</div>
+            </div>
+
+            <div *ngIf="cargando" class="empty-state">
+                <div class="empty-state-icon">⏳</div>
+                <p>Cargando lotes...</p>
+            </div>
+
+            <div *ngIf="!cargando && filtrarLotes().length === 0" class="empty-state">
+                <div class="empty-state-icon">📦</div>
+                <p>No hay lotes registrados</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Derecho - Detalles del Lote -->
+    <div class="right-panel">
+        <!-- Detalles del Lote -->
+        <div class="detalle-container">
+            <div class="detalle-header">
+                <h3 *ngIf="!loteSeleccionado">📦 Selecciona un lote</h3>
+                <h3 *ngIf="loteSeleccionado">
+                    📦 Lote #{{ loteSeleccionado.numeroSeguimiento }} - {{ loteSeleccionado.tipoProducto }}
+                </h3>
+            </div>
+
+            <!-- Estado vacío -->
+            <div *ngIf="!loteSeleccionado" class="empty-state">
+                <div class="empty-state-icon">📦</div>
+                <p>Selecciona un lote de la lista para ver sus detalles</p>
+            </div>
+
+            <!-- Detalles del lote seleccionado -->
+                            <div *ngIf="loteSeleccionado" class="info-section">
+                <!-- Información General -->
+                <div class="info-card">
+                    <div class="info-title">📊 Información General del Lote</div>
+                    <div class="info-content">
+                        <div class="dato-row">
+                            <span class="dato-label">Número de Seguimiento:</span>
+                            <span class="dato-valor">{{ loteSeleccionado.numeroSeguimiento }}</span>
+                        </div>
+                        <div class="dato-row">
+                            <span class="dato-label">Tipo de Producto:</span>
+                            <span class="dato-valor">{{ loteSeleccionado.tipoProducto }}</span>
+                        </div>
+                        <div class="dato-row">
+                            <span class="dato-label">Fecha de Creación:</span>
+                            <span class="dato-valor">{{ formatearFecha(loteSeleccionado.fechaCreacion) }}</span>
+                        </div>
+                        <div class="dato-row">
+                            <span class="dato-label">ID del Lote:</span>
+                            <span class="dato-valor">{{ loteSeleccionado.id }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del Almacén -->
+                <div class="info-card" *ngIf="loteSeleccionado.almacen">
+                    <div class="info-title">🏭 Información del Almacén</div>
+                    <div class="info-content">
+                        <div class="dato-row">
+                            <span class="dato-label">Número de Seguimiento:</span>
+                            <span class="dato-valor">{{ loteSeleccionado.almacen.numeroSeguimiento }}</span>
+                        </div>
+                        <div class="dato-row">
+                            <span class="dato-label">Ubicación:</span>
+                            <span class="dato-valor">{{ loteSeleccionado.almacen.ubicacion }}</span>
+                        </div>
+                        <div class="dato-row">
+                            <span class="dato-label">Capacidad:</span>
+                            <span class="dato-valor">{{ loteSeleccionado.almacen.capacidad }}</span>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+ 
+</div>
+
+<!-- Modal para Nuevo Lote -->
+<div class="modal-overlay" [class.active]="mostrarModalLote">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Nuevo Lote</h3>
+            <button class="btn-close" (click)="cerrarModalLote()">×</button>
+        </div>
+        <form (ngSubmit)="guardarLote()">
+            <div class="form-group">
+                <label>Almacén</label>
+                <select [(ngModel)]="formLote.idAlmacen" name="idAlmacen" required [disabled]="cargando">
+                    <option value="">Seleccione un almacén...</option>
+                    <option *ngFor="let almacen of almacenes" [value]="almacen.id">
+                        {{ almacen.numeroSeguimiento }} - {{ almacen.ubicacion }} 
+                        (Capacidad: {{ almacen.capacidad }}, Recursos: {{ contarRecursos(almacen) }})
+                    </option>
+                </select>
+                <small *ngIf="cargando" class="text-muted">Cargando almacenes...</small>
+            </div>
+            <div class="form-group">
+                <label>Tipo de Producto</label>
+                <select [(ngModel)]="formLote.tipoProducto" name="tipoProducto" required [disabled]="cargando">
+                    <option value="">Seleccione...</option>
+                    <option value="Miel">Miel</option>
+                    <option value="Polen">Polen</option>
+                    <option value="Propóleo">Propóleo</option>
+                    <option value="Jalea Real">Jalea Real</option>
+                    <option value="Cera">Cera</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalLote()" [disabled]="cargando">Cancelar</button>
+                <button type="submit" class="btn-modal btn-guardar" [disabled]="cargando">
+                    {{ cargando ? 'Guardando...' : 'Guardar' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,246 @@
+<div class="materias-container">
+  <div class="header">
+    <h2>Catálogo de Materias Primas</h2>
+    <div class="actions">
+      <div class="search-box">
+        <input
+          type="text"
+          placeholder="Buscar materia prima..."
+          [(ngModel)]="terminoBusqueda"
+          (input)="onBuscarChange()"
+        />
+        <span class="material-icons search-icon">search</span>
+      </div>
+      <button class="btn add" (click)="abrirFormulario()">
+                <span class="material-icons">add</span>
+ Nueva Materia Prima
+      </button>
+    </div>
+  </div>
+
+  <!-- Estado de carga -->
+  <div *ngIf="cargando" class="loading">
+    <div class="spinner"></div>
+    <p>Cargando materias primas...</p>
+  </div>
+
+  <!-- Catálogo de materias -->
+  <div class="catalogo" *ngIf="!cargando">
+    <div *ngFor="let materia of filtrarMaterias(); trackBy: trackByMateriaId" class="card fade-in">
+      <div class="card-image">
+        <img [src]="getFotoUrl(materia.foto)" [alt]="materia.nombre" class="materia-imagen" />
+        <div *ngIf="!materia.foto" class="no-imagen">
+          {{ getPlaceholderIcon(materia.nombre) }}
+        </div>
+      </div>
+      
+      <div class="card-content">
+        <h3>{{ materia.nombre }}</h3>
+        <p class="card-info"><strong>Cantidad:</strong> {{ materia.cantidad }}</p>
+        <p class="card-info"><strong>Almacén:</strong> {{ materia.almacen?.ubicacion }} ({{ materia.almacen?.numeroSeguimiento }})</p>
+        <p class="card-info"><strong>Proveedor:</strong> {{ materia.proveedor?.nombreEmpresa }}</p>
+      </div>
+
+      <div class="card-actions">
+        <button class="btn edit" (click)="editarMateria(materia)" title="Editar materia prima">
+          <span class="material-icons">edit</span>
+        </button>
+        <button class="btn delete" (click)="abrirModalConfirmacion(materia)" title="Eliminar materia prima">
+          <span class="material-icons">delete</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado vacío cuando no hay materias -->
+  <div *ngIf="!cargando && filtrarMaterias().length === 0" class="empty-state">
+    <div class="empty-state-icon">📦</div>
+    <h3>No hay materias primas registradas</h3>
+    <p>Comienza agregando tu primera materia prima</p>
+    <button class="btn add" (click)="abrirFormulario()">
+        <span class="material-icons">add</span>
+      Agregar Primera Materia Prima
+    </button>
+  </div>
+
+  <!-- Modal para agregar/editar materia prima -->
+  <div class="modal" *ngIf="mostrarFormulario">
+    <div class="modal-content">
+      <h3>{{ editando ? 'Editar Materia Prima' : 'Nueva Materia Prima' }}</h3>
+
+      <form (ngSubmit)="guardarMateria()">
+        <div>
+          <label for="nombre">Nombre *</label>
+          <input 
+            type="text" 
+            id="nombre"
+            [(ngModel)]="materiaSeleccionada.nombre" 
+            name="nombre" 
+            placeholder="Ej: Madera de Pino"
+            required 
+          />
+        </div>
+
+        <div>
+          <label for="cantidad">Cantidad *</label>
+          <input 
+            type="number" 
+            id="cantidad"
+            [(ngModel)]="materiaSeleccionada.cantidad" 
+            name="cantidad" 
+            placeholder="Ej: 100"
+            min="1"
+            required 
+          />
+        </div>
+
+        <div>
+          <label for="idAlmacen">Almacén *</label>
+          <select 
+            id="idAlmacen"
+            [(ngModel)]="materiaSeleccionada.idAlmacen" 
+            name="idAlmacen" 
+            required
+          >
+            <option value="">Seleccionar almacén</option>
+            <option *ngFor="let almacen of almacenes" [value]="almacen.id">
+              {{ almacen.ubicacion }} ({{ almacen.numeroSeguimiento }})
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label for="idProvedor">Proveedor *</label>
+          <select 
+            id="idProvedor"
+            [(ngModel)]="materiaSeleccionada.idProvedor" 
+            name="idProvedor" 
+            required
+          >
+            <option value="">Seleccionar proveedor</option>
+            <option *ngFor="let proveedor of proveedores" [value]="proveedor.id">
+              {{ proveedor.nombreEmpresa }} - {{ proveedor.nombreRepresentante }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label>Imagen de la Materia Prima</label>
+          
+          <div class="file-input-container" *ngIf="!imagenPreview">
+            <input 
+              type="file" 
+              id="foto"
+              (change)="onFileSelected($event)" 
+              accept="image/*"
+            />
+            <label for="foto" class="file-input-label">
+              <span class="material-icons">add_photo_alternate</span>
+              Seleccionar Imagen
+            </label>
+          </div>
+
+          <div *ngIf="imagenPreview" class="foto-preview">
+            <img 
+              [src]="imagenPreview" 
+              alt="Preview" 
+              class="foto-preview-img"
+            />
+            <button 
+              type="button" 
+              class="btn-eliminar-foto"
+              (click)="eliminarFoto()"
+            >
+              <span class="material-icons">delete</span>
+            </button>
+          </div>
+
+          <div class="file-info" *ngIf="archivoSeleccionado">
+            <small>Archivo seleccionado: {{ archivoSeleccionado.name }}</small>
+            <small>Tamaño: {{ (archivoSeleccionado.size / 1024 / 1024).toFixed(2) }} MB</small>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn save" type="submit" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : 'Guardar' }}
+          </button>
+          <button 
+            class="btn cancel" 
+            type="button" 
+            (click)="cerrarFormulario()"
+            [disabled]="guardando"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación para eliminar materia prima -->
+  <div class="modal" *ngIf="mostrarModalConfirmacion">
+    <div class="modal-content confirmacion-modal">
+      <div class="confirmacion-icon">
+        <span class="material-icons">warning</span>
+      </div>
+      
+      <h3>¿Estás seguro de eliminar esta materia prima?</h3>
+      
+      <div class="confirmacion-info">
+        <div class="materia-imagen-grande">
+          <img 
+            [src]="getFotoUrl(materiaAEliminar?.foto)" 
+            [alt]="materiaAEliminar?.nombre" 
+            class="imagen-eliminar"
+          />
+          <div *ngIf="!materiaAEliminar?.foto" class="no-imagen-grande">
+            {{ getPlaceholderIcon(materiaAEliminar?.nombre) }}
+          </div>
+        </div>
+        
+        <div class="materia-info">
+          <div class="materia-nombre">
+            <strong>{{ materiaAEliminar?.nombre }}</strong>
+          </div>
+          <div class="materia-detalle">
+            <strong>Cantidad:</strong> {{ materiaAEliminar?.cantidad }}
+          </div>
+          <div class="materia-detalle">
+            <strong>Almacén:</strong> {{ materiaAEliminar?.almacen?.ubicacion }} ({{ materiaAEliminar?.almacen?.numeroSeguimiento }})
+          </div>
+          <div class="materia-detalle">
+            <strong>Proveedor:</strong> {{ materiaAEliminar?.proveedor?.nombreEmpresa }}
+          </div>
+        </div>
+      </div>
+
+      <div class="advertencia">
+        <span class="material-icons">info</span>
+        <p>Esta acción no se puede deshacer. La materia prima será eliminada permanentemente del sistema.</p>
+      </div>
+
+      <div class="modal-actions confirmacion-actions">
+        <button 
+          class="btn cancel" 
+          type="button" 
+          (click)="cerrarModalConfirmacion()"
+          [disabled]="eliminando"
+        >
+          <span class="material-icons">close</span> 
+          Cancelar
+        </button>
+        <button 
+          class="btn delete-confirm" 
+          type="button" 
+          (click)="confirmarEliminacion()"
+          [disabled]="eliminando"
+        >
+          <span class="material-icons" *ngIf="!eliminando">delete</span>
+          <span class="spinner-small" *ngIf="eliminando"></span>
+          {{ eliminando ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

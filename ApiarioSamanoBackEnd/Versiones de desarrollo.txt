@@ -1,0 +1,110 @@
+Versiones de desarrollo 
+
+Docker -- v4.47.0
+java versión "v17.0.12"
+SpringBoot -- v3.5.6
+
+
+
+# JWT Configuration
+jwt.secret=p3u9FhZ@4!aB6nT$kX7rVq2^jP0zYwL&dH8sJm#QfR1tN*Zc5oGxE%lK9vU0bI
+
+
+
+# =====================================================
+# MicroServiceUsuario
+# =====================================================
+
+# Crear la imagen Docker
+docker build -t microserviceusuario:1.0 .
+
+# Levantar el contenedor
+docker run -d -p 8080:8080 --name MicroServiceUsuario microserviceusuario:1.0
+
+
+# =====================================================
+# MicroServiceProveedores
+# =====================================================
+
+docker build -t microserviceproveedores:1.0 .
+docker run -d -p 8081:8081 --name MicroServiceProveedores microserviceproveedores:1.0
+
+# =====================================================
+# MicroServiceProduccion
+# =====================================================
+docker build -t microserviceproduccion:1.0 .
+docker run -d -p 8082:8082 --name MicroServiceProduccion microserviceproduccion:1.0
+
+# =====================================================
+# MicroServiceNotificacionesGmail
+# =====================================================
+docker build -t microservicenotificacionesgmail:1.0 .
+docker run -d -p 8083:8083 --name MicroServiceNotificacionesGmail microservicenotificacionesgmail:1.0
+
+# =====================================================
+# MicroServiceGeneradorCodigo
+# =====================================================
+docker build -t microservicegeneradorcodigo:1.0 .
+docker run -d -p 8084:8084 --name MicroServiceGeneradorCodigo microservicegeneradorcodigo:1.0
+
+# =====================================================
+# MicroServiceAuth
+# =====================================================
+docker build -t microserviceauth:1.0 .
+docker run -d -p 8085:8085 --name MicroServiceAuth microserviceauth:1.0
+
+# =====================================================
+# MicroServiceApiarios
+# =====================================================
+docker build -t microserviceapiarios:1.0 .
+docker run -d -p 8086:8086 --name MicroServiceApiarios microserviceapiarios:1.0
+
+# =====================================================
+# MicroServiceAlmacen
+# =====================================================
+docker build -t microservicealmacen:1.0 .
+docker run -d -p 8087:8087 --name MicroServiceAlmacen microservicealmacen:1.0
+
+# =====================================================
+# Consejos útiles
+# =====================================================
+# Ver contenedores activos
+docker ps
+
+# Detener un contenedor
+docker stop MicroServiceAuth
+
+# Eliminar un contenedor
+docker rm MicroServiceAuth
+
+
+docker-compose up -d       
+
+mvn clean package -DskipTests
+
+docker system prune -a --volumes -f
+
+docker build -t microservice_postgres -f Dockerfile.postgres .
+
+docker exec -it ollama ollama pull gemma3:4b
+
+
+curl.exe -X POST `
+  -H "Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhbmRyb296NzA2QGdtYWlsLmNvbSIsInJvbCI6IkFETUlOSVNUUkFET1IiLCJ1c3VhcmlvSWQiOjEsImVzdGFkbyI6ZmFsc2UsImlhdCI6MTc2MDY0MjQzOCwiZXhwIjoxNzYwNzI4ODM4fQ.0Gs3umr0chCCO90M4pCTwjfNDENitpBZrtY4xlMfpmePtUqZ5Uj2Q2PjmrG5sdfc" `
+  -F "file=@C:\Users\andre\OneDrive\Imágenes\Capturas de pantalla\Captura de pantalla 2025-08-21 191639.png" `
+  http://localhost:8089/api/files/upload
+
+
+curl.exe -X GET `
+  -H "Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhbmRyb296NzA2QGdtYWlsLmNvbSIsInJvbCI6IkFETUlOSVNUUkFET1IiLCJ1c3VhcmlvSWQiOjEsImVzdGFkbyI6ZmFsc2UsImlhdCI6MTc2MDg0ODE4MiwiZXhwIjoxNzYwOTM0NTgyfQ.iveTn_LFkfe8cABh_WEWtZjuCHHPoYMNLQwHqrkdJkZ1hS7qsM4pOcLlvLPuinxo" `
+  -o "C:\Users\andre\OneDrive\Escritorio\prueba_descargada.txt" `
+  http://localhost:8089/api/files/view/FILE-20251019043005-ng0w#Z
+
+
+curl.exe -X POST "http://localhost:8086/api/proveedores" ^
+  -H "Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhbmRyb296NzA2QGdtYWlsLmNvbSIsInJvbCI6IkFETUlOSVNUUkFET1IiLCJ1c3VhcmlvSWQiOjEsImVzdGFkbyI6ZmFsc2UsImlhdCI6MTc2MDg0ODE4MiwiZXhwIjoxNzYwOTM0NTgyfQ.iveTn_LFkfe8cABh_WEWtZjuCHHPoYMNLQwHqrkdJkZ1hS7qsM4pOcLlvLPuinxo" ^
+  -F "nombreEmpresa=Mi Empresa Ejemplo" ^
+  -F "numTelefono=1234567890" ^
+  -F "nombreReprecentante=Juan Pérez" ^
+  -F "materialProvee=Miel y cera" ^
+  -F "fotografia=@C:\Users\andre\OneDrive\Imágenes\Capturas de pantalla\Captura de pantalla 2025-08-21 191639.png"

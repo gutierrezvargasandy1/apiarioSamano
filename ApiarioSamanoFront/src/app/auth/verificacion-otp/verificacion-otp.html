@@ -1,0 +1,77 @@
+<div class="otp-container">
+  <div class="otp-card">
+    
+    <!-- Sobre cerrado estático -->
+    <div class="envelope-wrapper">
+      <div class="envelope">
+        <!-- Cuerpo principal del sobre -->
+        <div class="envelope-body">
+          <!-- Parte trasera (rectángulo principal) -->
+          <div class="envelope-back">
+            <!-- Líneas del destinatario -->
+            <div class="address-lines">
+              <div class="line line-1"></div>
+              <div class="line line-2"></div>
+              <div class="line line-3"></div>
+            </div>
+            <!-- Sello postal -->
+            <div class="stamp">
+              <div class="stamp-inner"></div>
+            </div>
+          </div>
+          
+          <!-- Solapa triangular cerrada -->
+          <div class="envelope-flap">
+            <svg width="192" height="96" viewBox="0 0 192 96" class="flap-svg">
+              <polygon points="0,0 96,64 192,0" fill="#FBBF24" stroke="#F59E0B" stroke-width="2"/>
+              <line x1="40" y1="15" x2="70" y2="35" stroke="#F59E0B" stroke-width="1" opacity="0.3"/>
+              <line x1="122" y1="15" x2="152" y2="35" stroke="#F59E0B" stroke-width="1" opacity="0.3"/>
+            </svg>
+          </div>
+
+          <!-- Triángulos laterales del sobre -->
+          <div class="envelope-side-left">
+            <svg width="96" height="64" viewBox="0 0 96 64">
+              <polygon points="0,64 96,0 96,64" fill="#FCD34D" opacity="0.6"/>
+            </svg>
+          </div>
+          <div class="envelope-side-right">
+            <svg width="96" height="64" viewBox="0 0 96 64">
+              <polygon points="0,0 96,64 0,64" fill="#FCD34D" opacity="0.6"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido del formulario -->
+    <h2>Verificación de Código OTP</h2>
+    
+    <p class="subtitle">
+      Ingresa el código de verificación enviado para recuperar tu contraseña.
+    </p>
+
+    <form (ngSubmit)="verificarOTP()" #otpForm="ngForm">
+      <label for="otp">Código de verificación</label>
+      <input
+        id="otp"
+        type="text"
+        maxlength="6"
+        [(ngModel)]="codigoOTP"
+        name="codigoOTP"
+        placeholder="000000"
+        required
+      />
+      
+      <button type="submit" class="btn-verify" [disabled]="!otpForm.valid || codigoOTP.length !== 6">
+        <span class="icon-check"></span>
+        Verificar
+      </button>
+    </form>
+
+    <p class="info-text">
+      ¿No recibiste el código? <a (click)="reenviarOTP()">Reenviar</a>
+    </p>
+
+  </div>
+</div>

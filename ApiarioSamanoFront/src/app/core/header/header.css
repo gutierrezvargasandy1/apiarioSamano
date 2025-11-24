@@ -1,0 +1,271 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #301d08;
+  position: relative;
+  padding: 8px 20px;
+  color: white;
+  flex-wrap: wrap;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  margin-left: 40px;
+}
+
+.logo img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Contenedor del perfil */
+.profile {
+  position: relative;
+}
+
+/* Botón del usuario */
+.user-btn {
+  background: linear-gradient(135deg, #d4af37 0%, #c0ad38 100%);
+  color: #301d08;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+
+
+.user-btn:active {
+  transform: translateY(0);
+}
+
+/* Panel de perfil COMPACTO */
+.profile-panel {
+  position: absolute;
+  top: calc(220% + 10px);
+  right: -400px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 290px; /* Reducido de 320px */
+   height: 320px;
+  border: 2px solid #daa06d; /* Borde más delgado */
+  background: linear-gradient(135deg, #fefae0 0%, #eaddca 100%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transition: right 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* Cuando está abierto, se desliza hacia dentro */
+.profile-panel.open {
+   right: -20px;
+}
+
+/* Header del panel COMPACTO */
+.panel-header {
+  background: linear-gradient(135deg, #d4af37 0%, #c0ad38 100%);
+  padding: 15px 20px; /* Reducido padding */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.heading {
+  color: #301d08;
+  font-size: 16px; /* Tamaño de fuente reducido */
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.close-btn {
+  background: rgba(48, 29, 8, 0.1);
+  border: 2px solid #301d08;
+  border-radius: 50%;
+  width: 28px; /* Más pequeño */
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #301d08;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #301d08;
+  color: white;
+  transform: rotate(90deg);
+}
+
+/* Avatar Section COMPACTO */
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px 20px 10px; /* Reducido padding */
+  gap: 8px;
+}
+
+.avatar-circle {
+  width: 60px; /* Más pequeño */
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d4af37 0%, #c0ad38 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(212, 175, 55, 0.4);
+  border: 3px solid white; /* Borde más delgado */
+}
+
+.avatar-initials {
+  font-size: 24px; /* Más pequeño */
+  font-weight: bold;
+  color: #301d08;
+  user-select: none;
+}
+
+.avatar-name {
+  font-size: 16px; /* Más pequeño */
+  font-weight: bold;
+  color: #301d08;
+  margin: 0;
+  text-align: center;
+}
+
+/* Info Section COMPACTO */
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 15px; /* Reducido padding */
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Espacio reducido */
+  padding: 8px; /* Padding reducido */
+  background: white;
+  border-radius: 10px; /* Bordes menos redondeados */
+  margin-bottom: 8px; /* Espacio reducido entre items */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+
+.info-icon {
+  font-size: 20px; /* Iconos más pequeños */
+  min-width: 24px;
+  text-align: center;
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.info-label {
+  font-size: 10px; /* Texto más pequeño */
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.info-value {
+  font-size: 13px; /* Texto más pequeño */
+  font-weight: 500;
+  color: #301d08;
+  word-break: break-word;
+}
+
+/* Botón de cerrar sesión COMPACTO */
+.logout-btn {
+  margin: 0 15px; /* Margen reducido */
+  padding: 12px; /* Padding reducido */
+  background: linear-gradient(135deg, #285e61 0%, #225e5f 100%);
+  color: white;
+  border: none;
+  border-radius: 10px; /* Bordes menos redondeados */
+  font-size: 14px; /* Texto más pequeño */
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 8px rgba(40, 94, 97, 0.3);
+}
+
+.logout-btn:hover {
+  box-shadow: 0 4px 12px rgba(40, 94, 97, 0.4);
+  background: linear-gradient(135deg, #1f4a4d 0%, #1a4647 100%);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+.logout-icon {
+  font-size: 16px; /* Icono más pequeño */
+}
+
+/* Estados del usuario */
+.estado-activo {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.estado-inactivo {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .logo {
+    margin-left: 0;
+  }
+
+  .profile-panel {
+    width: 260px; /* Aún más compacto en móviles */
+  }
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .profile-panel {
+    top: calc(100% + 8px);
+    right: -400px;
+    width: 85vw;
+    max-width: 280px;
+  }
+
+  .profile-panel.open {
+    right: 50%;
+    transform: translateX(50%);
+  }
+}
+

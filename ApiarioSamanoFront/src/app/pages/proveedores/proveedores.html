@@ -1,0 +1,283 @@
+<div class="proveedores-container">
+  <!-- Header con título y acciones -->
+  <div class="header">
+    <h2>Gestión de Proveedores</h2>
+    <div class="actions">
+      <!-- Búsqueda -->
+      <div class="search-box">
+        <input 
+          type="text" 
+          placeholder="Buscar proveedor..." 
+          [(ngModel)]="terminoBusqueda" 
+          (input)="onBuscarChange()"
+        />
+        <span class="material-icons search-icon">search</span>
+      </div>
+      
+      <!-- Botón nuevo proveedor -->
+      <button class="btn add" (click)="abrirFormulario()">
+        <span class="material-icons">person_add</span> 
+        Nuevo Proveedor
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de proveedores -->
+  <div class="tabla-container">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Fotografía</th>
+          <th>Nombre Empresa</th>
+          <th>Nombre Del Representante</th>
+          <th>Teléfono</th>
+          <th>Material que Provee</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Estado de carga -->
+        <tr *ngIf="cargando">
+          <td colspan="6">
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Cargando proveedores...</p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Lista de proveedores -->
+        <tr *ngFor="let proveedor of filtrarProveedores(); trackBy: trackByProveedorId" class="fade-in">
+          <td>
+            <!-- Imagen del proveedor -->
+            <img 
+              *ngIf="proveedor.fotografia" 
+              [src]="getFotoUrl(proveedor.fotografia)" 
+              alt="Foto de {{ proveedor.nombreEmpresa }}" 
+              class="foto-tabla"
+            />
+            <!-- Placeholder si no hay imagen -->
+            <div *ngIf="!proveedor.fotografia" class="no-imagen">
+              {{ getPlaceholderIcon(proveedor.materialProvee) }}
+            </div>
+          </td>
+          <td><strong>{{ proveedor.nombreEmpresa }}</strong></td>
+          <td>{{ proveedor.nombreRepresentante }}</td>
+          <td>{{ proveedor.numTelefono }}</td>
+          <td>{{ proveedor.materialProvee }}</td>
+          <td>
+            <div class="tabla-acciones">
+              <!-- Botón editar -->
+              <button 
+                class="btn edit" 
+                (click)="editarProveedor(proveedor)"
+                title="Editar proveedor"
+              >
+                <span class="material-icons">edit</span>
+              </button>
+              
+              <!-- Botón eliminar -->
+              <button 
+                class="btn delete" 
+                (click)="abrirModalConfirmacion(proveedor)"
+                title="Eliminar proveedor"
+              >
+                <span class="material-icons">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Estado vacío cuando no hay proveedores -->
+        <tr *ngIf="!cargando && filtrarProveedores().length === 0">
+          <td colspan="6">
+            <div class="empty-state">
+              <div class="empty-state-icon">📦</div>
+              <h3>No hay proveedores registrados</h3>
+              <p>Comienza agregando tu primer proveedor</p>
+              <button class="btn add" (click)="abrirFormulario()">
+                <span class="material-icons">person_add</span>
+                Agregar Primer Proveedor
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal para agregar/editar proveedor -->
+  <div class="modal" *ngIf="mostrarFormulario">
+    <div class="modal-content">
+      <h3>{{ editando ? 'Editar Proveedor' : 'Nuevo Proveedor' }}</h3>
+
+      <form (ngSubmit)="guardarProveedor()">
+        <!-- Nombre de la empresa -->
+        <div>
+          <label for="nombreEmpresa">Nombre de la Empresa *</label>
+          <input 
+            type="text" 
+            id="nombreEmpresa"
+            [(ngModel)]="proveedorSeleccionado.nombreEmpresa" 
+            name="nombreEmpresa" 
+            placeholder="Ej: Maderas y Materiales S.A."
+            required 
+          />
+        </div>
+
+        <!-- Nombre del Representante -->
+        <div>
+          <label for="nombreRepresentante">Nombre del Representante *</label>
+          <input 
+            type="text" 
+            id="nombreRepresentante"
+            [(ngModel)]="proveedorSeleccionado.nombreRepresentante" 
+            name="nombreRepresentante" 
+            placeholder="Ej: Juan Pérez García"
+            required 
+          />
+        </div>
+
+        <!-- Teléfono -->
+        <div>
+          <label for="telefono">Número de Teléfono *</label>
+          <input 
+            type="tel" 
+            id="telefono"
+            [(ngModel)]="proveedorSeleccionado.numTelefono" 
+            name="numTelefono" 
+            placeholder="Ej: 461-123-4567"
+            required 
+          />
+        </div>
+
+        <!-- Material que provee -->
+        <div>
+          <label for="material">Material que Provee *</label>
+          <input 
+            type="text" 
+            id="material"
+            [(ngModel)]="proveedorSeleccionado.materialProvee" 
+            name="materialProvee" 
+            placeholder="Ej: Madera, Cemento, Herramientas"
+            required 
+          />
+        </div>
+
+        <!-- Fotografía -->
+        <div>
+          <label>Fotografía de la Empresa</label>
+          
+          <!-- Mostrar botón de selección solo si NO hay imagen preview -->
+          <div class="file-input-container" *ngIf="!imagenPreview">
+            <input 
+              type="file" 
+              id="foto"
+              (change)="onFileSelected($event)" 
+              accept="image/*"
+            />
+            <label for="foto" class="file-input-label">
+              <span class="material-icons">add_photo_alternate</span>
+              Seleccionar Imagen
+            </label>
+          </div>
+
+          <!-- Preview de la imagen -->
+          <div *ngIf="imagenPreview" class="foto-preview">
+            <img 
+              [src]="imagenPreview" 
+              alt="Preview" 
+              class="foto-preview-img"
+            />
+            <button 
+              type="button" 
+              class="btn-eliminar-foto"
+              (click)="eliminarFoto()"
+            >
+              <span class="material-icons">delete</span>
+            </button>
+          </div>
+
+          <!-- Información sobre la imagen -->
+          <div class="file-info" *ngIf="archivoSeleccionado">
+            <small>Archivo seleccionado: {{ archivoSeleccionado.name }}</small>
+            <small>Tamaño: {{ (archivoSeleccionado.size / 1024 / 1024).toFixed(2) }} MB</small>
+          </div>
+        </div>
+
+        <!-- Acciones del modal -->
+        <div class="modal-actions">
+          <button class="btn save" type="submit" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : 'Guardar' }}
+          </button>
+          <button 
+            class="btn cancel" 
+            type="button" 
+            (click)="cerrarFormulario()"
+            [disabled]="guardando"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación para eliminar proveedor -->
+  <div class="modal" *ngIf="mostrarModalConfirmacion">
+    <div class="modal-content confirmacion-modal">
+      <div class="confirmacion-icon">
+        <span class="material-icons">warning</span>
+      </div>
+      
+      <h3>¿Estás seguro de eliminar este proveedor?</h3>
+      
+      <div class="confirmacion-info">
+<img 
+  *ngIf="proveedorAEliminar?.fotografia" 
+  [src]="getFotoUrl(proveedorAEliminar?.fotografia)" 
+  class="foto-tablaModal"
+/>
+        <div class="proveedor-info">
+          <strong>{{ proveedorAEliminar?.nombreEmpresa }}</strong>
+        </div>
+        <div class="proveedor-representante">
+          Representante: {{ proveedorAEliminar?.nombreRepresentante }}
+        </div>
+        <div class="proveedor-telefono">
+          Teléfono: {{ proveedorAEliminar?.numTelefono }}
+        </div>
+        <div class="proveedor-material">
+          Material: {{ proveedorAEliminar?.materialProvee }}
+        </div>
+      </div>
+
+      <div class="advertencia">
+        <span class="material-icons">info</span>
+        <p>Esta acción no se puede deshacer. El proveedor será eliminado permanentemente del sistema.</p>
+      </div>
+
+      <div class="modal-actions confirmacion-actions">
+        <button 
+          class="btn cancel" 
+          type="button" 
+          (click)="cerrarModalConfirmacion()"
+          [disabled]="eliminando"
+        >
+          <span class="material-icons">close</span> 
+          Cancelar
+        </button>
+        <button 
+          class="btn delete-confirm" 
+          type="button" 
+          (click)="confirmarEliminacion()"
+          [disabled]="eliminando"
+        >
+          <span class="material-icons" *ngIf="!eliminando">delete</span>
+          <span class="spinner-small" *ngIf="eliminando"></span>
+          {{ eliminando ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

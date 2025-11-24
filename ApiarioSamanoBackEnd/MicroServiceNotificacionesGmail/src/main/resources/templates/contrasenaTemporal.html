@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Contraseña Temporal</title>
+  <style>
+    /* Fondo general */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(to bottom right, #fef3c7, #fed7aa, #fee3c7);
+      font-family: "Segoe UI", sans-serif;
+      color: #374151;
+      padding: 1rem;
+    }
+
+    /* Tarjeta principal */
+    .card {
+      background: white;
+      padding: 2.5rem 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                  0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      max-width: 28rem;
+      width: 100%;
+      border-top: 4px solid #f59e0b;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    /* Encabezado */
+    .card h2 {
+      font-size: 1.875rem;
+      font-weight: bold;
+      color: #d97706;
+      margin-bottom: 0.5rem;
+    }
+
+    .card p {
+      color: #4b5563;
+      margin: 0.5rem 0 1rem;
+    }
+
+    /* Contraseña temporal */
+    .password-temp {
+      display: inline-block;
+      background: #fef3c7;
+      border: 2px dashed #fcd34d;
+      color: #16a34a;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Nota informativa */
+    .note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: #fef3c7;
+      border: 1px solid #fc824d;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      color: #92400e;
+      font-size: 0.95rem;
+    }
+
+    .note svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      fill: #f59e0b;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Pie de página */
+    .footer {
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: #6b7280;
+      border-top: 1px solid #d2a81e;
+      padding-top: 1rem;
+    }
+
+    .footer p {
+      margin: 0.3rem 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .card {
+        padding: 1.5rem;
+      }
+
+      .password-temp {
+        font-size: 1.25rem;
+      }
+
+      .card h2 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>¡Hola, <span th:text="${nombreUsuario}">Usuario</span>!</h2>
+    <p>Se ha generado una contraseña temporal para tu cuenta</p>
+
+    <div class="password-temp" th:text="${contrasenaTemporal}">************</div>
+
+    <div class="note">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10
+                 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+      </svg>
+      <strong>Esta contraseña temporal solo es válida hasta que la cambies.</strong>
+    </div>
+
+    <div class="footer">
+      <p>Si no solicitaste esta contraseña, contacta con el administrador del sistema.</p>
+      <p>Enviado desde el microservicio de usuarios</p>
+    </div>
+  </div>
+</body>
+</html>

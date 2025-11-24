@@ -1,0 +1,338 @@
+/* Contenedor general */
+.change-password-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #fef3c7, #fed7aa, #fef3c7);
+  padding: 1rem;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* Tarjeta central */
+.change-password-card {
+  background: white;
+  padding: 2rem 2.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+              0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 28rem;
+  border-top: 4px solid #f59e0b;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* === LLAVE Y CANDADO === */
+.key-lock-wrapper {
+  margin-bottom: -1rem;
+  height: 11rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.key-lock-animation {
+  position: relative;
+  width: 12rem;
+  height: 8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Candado */
+.lock-body {
+  position: relative;
+  z-index: 10;
+}
+
+.lock-top {
+  width: 3.5rem;
+  height: 3rem;
+  border: 0.5rem solid #fb923c;
+  border-bottom: none;
+  border-radius: 2rem 2rem 0 0;
+  margin: 0 auto;
+  background: transparent;
+}
+
+.lock-bottom {
+  width: 4.5rem;
+  height: 3.5rem;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 2px solid #fb923c;
+}
+
+.keyhole {
+  width: 0.6rem;
+  height: 0.6rem;
+  background: #fff;
+  border-radius: 50%;
+  position: relative;
+}
+
+.keyhole::after {
+  content: '';
+  position: absolute;
+  top: 0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0.3rem;
+  height: 1rem;
+  background: #fff;
+  border-radius: 0 0 0.2rem 0.2rem;
+}
+
+/* Llave */
+.key {
+  position: absolute;
+  right: -1rem;
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
+  z-index: 5;
+  animation: keyFloat 3s ease-in-out infinite;
+}
+
+@keyframes keyFloat {
+  0%, 100% {
+    transform: translateY(-50%) rotate(-45deg) translateX(0);
+  }
+  50% {
+    transform: translateY(-50%) rotate(-45deg) translateX(0.5rem);
+  }
+}
+
+.key-head {
+  width: 2rem;
+  height: 2rem;
+  background: linear-gradient(135deg, #fed7aa, #fdba74);
+  border-radius: 50%;
+  border: 2px solid #fb923c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.key-hole {
+  width: 0.6rem;
+  height: 0.6rem;
+  background: #f59e0b;
+  border-radius: 50%;
+}
+
+.key-shaft {
+  width: 3rem;
+  height: 0.4rem;
+  background: linear-gradient(90deg, #fdba74, #fbbf24);
+  border: 2px solid #fb923c;
+  border-radius: 0.2rem;
+  margin-left: 1.8rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.key-teeth {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: 4.8rem;
+  margin-top: -0.4rem;
+}
+
+.tooth {
+  width: 0.3rem;
+  height: 0.6rem;
+  background: #fbbf24;
+  border: 1px solid #fb923c;
+}
+
+.tooth:nth-child(1) {
+  height: 0.8rem;
+}
+
+.tooth:nth-child(3) {
+  height: 0.5rem;
+}
+
+/* === Texto y formulario === */
+h2 {
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: #d97706;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.subtitle {
+  color: #4b5563;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  width: 99%;
+  margin: 0 auto;
+}
+
+label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+/* Input */
+input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #fcd34d;
+  border-radius: 0.5rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+input:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
+}
+input::placeholder {
+  color: #d1d5db;
+}
+
+/* Botón primario */
+.btn-primary {
+  width: 100%;
+  background: #fbbf24;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #f59e0b;
+  box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
+}
+.btn-primary:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+.icon-key {
+  font-size: 1.25rem;
+}
+
+/* Spinner de carga */
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Mensajes */
+.error-message {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.success-message {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.loading-message {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+/* Texto inferior */
+.info-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .change-password-card {
+    padding: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  .key-lock-wrapper {
+    height: 9rem;
+  }
+  
+  .key-lock-animation {
+    width: 10rem;
+    height: 6.5rem;
+  }
+  
+  .lock-top {
+    width: 3rem;
+    height: 2.5rem;
+    border-width: 0.4rem;
+  }
+  
+  .lock-bottom {
+    width: 4rem;
+    height: 3rem;
+  }
+  
+  .key {
+    right: -0.5rem;
+  }
+}

@@ -1,0 +1,90 @@
+<nav class="navbar" *ngIf="shouldShowNavbar()">
+  <div class="navbar-container">
+    <div class="navbar-brand">
+      <span class="brand-text">ApiariosSamano</span>
+    </div>
+    
+    <div class="navbar-links">
+      <a class="nav-link" 
+         [class.active]="router.url === '/home'" 
+         (click)="goToHome()"
+         title="Inicio">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Inicio</span>
+      </a>
+      
+      <a class="nav-link" 
+         [class.active]="router.url === '/produccion'" 
+         (click)="goToProduccion()"
+         title="Producción">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Producción</span>
+      </a>
+      
+      <a class="nav-link" 
+         [class.active]="router.url === '/lotes'" 
+         (click)="goToLotes()"
+         title="Lotes">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Lotes</span>
+      </a>
+      
+      <a class="nav-link" 
+         [class.active]="router.url === '/apiarios'" 
+         (click)="goToApiarios()"
+         title="Apiarios">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Apiarios</span>
+      </a>
+      
+      <a class="nav-link" 
+         [class.active]="router.url === '/almacenes'" 
+         (click)="goToAlmacenes()"
+         title="Almacenes">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Almacenes</span>
+      </a>
+      
+      <a class="nav-link" 
+         [class.active]="router.url === '/herramientas'" 
+         (click)="goToHerramientas()"
+         title="Herramientas">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Herramientas</span>
+      </a>
+
+      <a class="nav-link" 
+         [class.active]="router.url === '/medicamentos'" 
+         (click)="goToHistorialMedico()"
+         title="Medicamentos">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Medicamentos</span>
+      </a>
+      
+      <a class="nav-link" 
+         [class.active]="router.url === '/materias-primas'" 
+         (click)="goToMateriasPrimas()"
+         title="Materias Primas">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Materias Primas</span>
+      </a>
+      
+      <a class="nav-link" 
+         [class.active]="router.url === '/proveedores'" 
+         (click)="goToProveedores()"
+         title="Proveedores">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Proveedores</span>
+      </a>
+      
+      <a class="nav-link" 
+         *ngIf="!isOperator" 
+         [class.active]="router.url === '/usuarios'" 
+         (click)="goToUsuarios()"
+         title="Usuarios">
+        <span class="nav-icon"></span>
+        <span class="nav-text">Usuarios</span>
+      </a>
+    </div>
+  </div>
+</nav>
