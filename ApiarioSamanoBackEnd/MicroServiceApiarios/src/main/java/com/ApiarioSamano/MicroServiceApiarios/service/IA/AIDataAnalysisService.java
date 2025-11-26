@@ -2,9 +2,6 @@ package com.ApiarioSamano.MicroServiceApiarios.service.IA;
 
 import com.ApiarioSamano.MicroServiceApiarios.dto.CodigoResponse;
 import com.ApiarioSamano.MicroServiceApiarios.model.Apiarios;
-import com.ApiarioSamano.MicroServiceApiarios.model.HistorialMedico;
-import com.ApiarioSamano.MicroServiceApiarios.model.Receta;
-import com.ApiarioSamano.MicroServiceApiarios.model.RecetaMedicamento;
 import com.ApiarioSamano.MicroServiceApiarios.service.ApiariosService;
 import com.ApiarioSamano.MicroServiceApiarios.service.TemperaturaApi;
 
@@ -15,8 +12,6 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,604 +23,302 @@ public class AIDataAnalysisService {
     private final OllamaService ollamaService;
     private final TemperaturaApi temperaturaApia;
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(3);
-
-    public CodigoResponse<Map<String, Object>> obtenerDatosEstadisticosApiarios() {
-        long startTime = System.currentTimeMillis();
-
-        try {
-            log.info("📊 Iniciando análisis estadístico de ApiariosDB...");
-
-            CodigoResponse<List<Apiarios>> apiariosResponse = apiariosService.obtenerTodos();
-            List<Apiarios> apiarios = apiariosResponse.getData();
-
-            if (apiarios == null || apiarios.isEmpty()) {
-                return new CodigoResponse<>(204, "No hay apiarios registrados", null);
-            }
-
-            long total = apiarios.size();
-            long conTratamiento = apiarios.stream().filter(a -> a.getReceta() != null).count();
-            long sinTratamiento = total - conTratamiento;
-
-            Map<String, Long> distribucionSalud = apiarios.stream()
-                    .collect(Collectors.groupingBy(
-                            a -> a.getSalud() != null ? a.getSalud() : "No especificada",
-                            Collectors.counting()));
-
-            // Estadísticas del historial médico
-            Map<String, Object> estadisticasHistorial = obtenerEstadisticasHistorialMedico(apiarios);
-
-            Map<String, Object> resumen = new HashMap<>();
-            resumen.put("totalApiarios", total);
-            resumen.put("conTratamiento", conTratamiento);
-            resumen.put("sinTratamiento", sinTratamiento);
-            resumen.put("distribucionSalud", distribucionSalud);
-            resumen.put("estadisticasHistorial", estadisticasHistorial);
-
-            String datosTexto = prepararDatosParaAnalisis(apiarios);
-
-            String systemPrompt = """
-                    Eres un experto en manejo de apiarios.
-                    A partir de los datos proporcionados:
-                    - Resume el estado general de los apiarios.
-                    - Identifica posibles áreas de mejora.
-                    - Propón 2 acciones clave para fortalecer la salud general.
-                    - Considera el historial médico en tu análisis.
-                    Responde en máximo 150 palabras con formato de puntos (•).
-                    """;
-
-            String analisisIA = ollamaService.generateAnalysis(systemPrompt, datosTexto, 125);
-
-            Map<String, Object> resultado = new HashMap<>();
-            resultado.put("analisisIA", analisisIA);
-            resultado.put("resumenEstadistico", resumen);
-            resultado.put("modeloUsado", ollamaService.getModel());
-            resultado.put("tiempoProcesamiento", (System.currentTimeMillis() - startTime) + "ms");
-
-            return new CodigoResponse<>(200, "Análisis estadístico generado con éxito", resultado);
-
-        } catch (Exception e) {
-            log.error("💥 Error en análisis estadístico: {}", e.getMessage());
-            return new CodigoResponse<>(500, "Error generando análisis: " + e.getMessage(), null);
-        }
-    }
-
-    public CodigoResponse<Map<String, Object>> obtenerSugerenciasPorApiario(Long idApiario) {
-        long startTime = System.currentTimeMillis();
-
-        try {
-            CodigoResponse<Apiarios> apiarioResponse = apiariosService.obtenerPorId(idApiario);
-            Apiarios apiario = apiarioResponse.getData();
-
-            if (apiario == null) {
-                return new CodigoResponse<>(404, "Apiario no encontrado", null);
-            }
-
-            // Obtener historial médico usando el método corregido
-            HistorialMedico historialMedico = obtenerHistorialMedicoSeguro(apiario);
-
-            String infoApiario = prepararInfoApiarioIndividual(apiario, historialMedico);
-
-            String systemPrompt = """
-                    Eres un experto apícola.
-                    Basándote en la información del apiario, su salud, tratamiento actual y historial médico completo:
-                    - Da 3 recomendaciones prácticas inmediatas.
-                    - Indica si el apiario requiere monitoreo o intervención.
-                    - Menciona una sugerencia de mejora ambiental si aplica.
-                    - Considera el historial médico previo para recomendaciones personalizadas.
-                    Máximo 120 palabras, formato de viñetas (•).
-                    """;
-
-            String respuestaIA = ollamaService.generateAnalysis(systemPrompt, infoApiario, 125);
-
-            Map<String, Object> resultado = new HashMap<>();
-            resultado.put("apiario", apiario.getNumeroApiario());
-            resultado.put("ubicacion", apiario.getUbicacion());
-            resultado.put("saludActual", apiario.getSalud());
-            resultado.put("sugerenciasIA", respuestaIA);
-            resultado.put("historialMedico", historialMedico);
-            resultado.put("estadisticasApiario", obtenerEstadisticasIndividuales(apiario, historialMedico));
-            resultado.put("modeloUsado", ollamaService.getModel());
-            resultado.put("tiempoProcesamiento", (System.currentTimeMillis() - startTime) + "ms");
-
-            return new CodigoResponse<>(200, "Sugerencias generadas exitosamente", resultado);
-
-        } catch (Exception e) {
-            log.error("💥 Error generando sugerencias: {}", e.getMessage());
-            return new CodigoResponse<>(500, "Error generando sugerencias: " + e.getMessage(), null);
-        }
-    }
-
     public CodigoResponse<Map<String, Object>> obtenerPrediccionesDeCuidado() {
         long startTime = System.currentTimeMillis();
 
         try {
-            // 1️⃣ Obtener lista de apiarios
+            log.info("🔮 Iniciando predicciones con Gemma3:4b...");
+
+            // 1. Verificar estado de Ollama
+            Map<String, Object> ollamaStatus = ollamaService.getOllamaStatus();
+            log.info("📊 Estado Ollama: {}", ollamaStatus);
+
+            if (!Boolean.TRUE.equals(ollamaStatus.get("ollamaDisponible"))) {
+                Map<String, Object> errorResult = new HashMap<>();
+                errorResult.put("error", "Ollama no disponible");
+                errorResult.put("detalles", ollamaStatus);
+                errorResult.put("solucion", "Verificar: docker logs ollama");
+                log.warn("⚠️ Ollama no disponible. Detalles: {}", ollamaStatus);
+                return new CodigoResponse<>(503, "Servicio de IA no disponible", errorResult);
+            }
+
+            // 2. Obtener apiarios
             CodigoResponse<List<Apiarios>> apiariosResponse = apiariosService.obtenerTodos();
             List<Apiarios> apiarios = apiariosResponse.getData();
 
             if (apiarios == null || apiarios.isEmpty()) {
-                return new CodigoResponse<>(204, "No hay apiarios registrados para análisis", null);
+                log.warn("⚠️ No hay apiarios registrados para analizar");
+                return new CodigoResponse<>(204, "No hay apiarios registrados", null);
             }
 
-            // 2️⃣ Preparar datos base de los apiarios
-            String datos = prepararDatosParaAnalisis(apiarios);
+            log.info("📦 Apiarios obtenidos: {}", apiarios.size());
 
-            log.error("Datos para predicción: {}", datos);
+            // 3. Obtener temperatura actual
+            double temperaturaActual = 25.0; // Valor por defecto
+            try {
+                temperaturaActual = temperaturaApia.obtenerTemperaturaActualDolores();
+                log.info("🌡️ Temperatura actual: {}°C", temperaturaActual);
+            } catch (Exception e) {
+                log.warn("⚠️ No se pudo obtener temperatura: {}. Usando valor por defecto: {}°C",
+                        e.getMessage(), temperaturaActual);
+            }
 
-            // 3️⃣ Agregar contexto de ubicación y clima actual
-            String ubicacion = "Dolores Hidalgo, Guanajuato, México";
-            double temperaturaActual = temperaturaApia.obtenerTemperaturaActualDolores();
-            log.error("Datos para predicción: {}", temperaturaActual);
-            String contextoClimatico = String.format(
-                    "Los apiarios están ubicados en %s. " +
-                            "La temperatura actual es de %.1f°C. " +
-                            "Considera este clima en tus predicciones y recomendaciones.\n\n",
-                    ubicacion, temperaturaActual);
-            log.error("Datos para predicción: {}", contextoClimatico);
+            // 4. Preparar datos para análisis
+            String datos = prepararDatosParaGemma(apiarios);
+            log.info("📝 Datos preparados: {} caracteres", datos.length());
 
-            // 4️⃣ Instrucción al modelo IA
+            // 5. Prompt optimizado para Gemma3
             String systemPrompt = """
-                    Actúa como un asistente predictivo de apicultura especializado en clima y salud de colmenas.
-                    Analiza los datos de los apiarios considerando el contexto climático actual y el historial médico.
-                    Predice los principales riesgos en los próximos 30 días, incluyendo:
-                    - Problemas posibles (enfermedades, estrés térmico, baja producción, plagas)
-                    - Nivel de probabilidad (Alta/Media/Baja)
-                    - Medida preventiva recomendada
-                    - Considera patrones del historial médico
-                    Ajusta las recomendaciones a las condiciones ambientales locales.
-                    Responde en máximo 200 palabras y rapido.
+                    Eres Gemma, un asistente especializado en apicultura.
+                    Analiza los datos proporcionados y genera predicciones CONCRETAS para los próximos 30 días.
+
+                    FORMATO DE RESPUESTA REQUERIDO:
+
+                    🔴 RIESGOS PRINCIPALES:
+                    1. [Riesgo] - Probabilidad: [Alta/Media/Baja]
+                       Acción: [Medida preventiva específica]
+
+                    2. [Riesgo] - Probabilidad: [Alta/Media/Baja]
+                       Acción: [Medida preventiva específica]
+
+                    3. [Riesgo] - Probabilidad: [Alta/Media/Baja]
+                       Acción: [Medida preventiva específica]
+
+                    INSTRUCCIONES:
+                    - Sé técnico, conciso y específico
+                    - Máximo 150 palabras en total
+                    - No incluyas introducciones ni conclusiones
+                    - Basa tus predicciones en los datos de salud, tratamientos y clima
                     """;
 
-            // 5️⃣ Combinar datos con contexto
+            String contextoClimatico = String.format(
+                    "🌍 CONTEXTO:\n" +
+                            "Ubicación: Dolores Hidalgo, Guanajuato, México\n" +
+                            "Temperatura actual: %.1f°C\n" +
+                            "Total apiarios: %d\n\n",
+                    temperaturaActual, apiarios.size());
+
             String entradaIA = contextoClimatico + datos;
 
-            // 6️⃣ Ejecutar análisis en el modelo IA
-            String prediccionIA = ollamaService.generateAnalysis(systemPrompt, entradaIA, 300);
+            log.info("📊 Prompt preparado:");
+            log.info("   - System prompt: {} caracteres", systemPrompt.length());
+            log.info("   - Entrada de datos: {} caracteres", entradaIA.length());
+            log.info("   - Temperatura: {}°C", temperaturaActual);
 
-            if (prediccionIA == null || prediccionIA.isBlank()) {
-                return new CodigoResponse<>(500, "El análisis de IA no devolvió resultado", null);
+            // 6. Ejecutar análisis con Ollama
+            log.info("🧠 Solicitando análisis a Gemma3...");
+            String prediccionIA = ollamaService.generateAnalysis(systemPrompt, entradaIA, 220);
+
+            if (prediccionIA == null || prediccionIA.trim().isEmpty()) {
+                throw new RuntimeException("El modelo no generó ninguna predicción");
             }
 
-            // 7️⃣ Construir respuesta final
+            log.info("✅ Predicción generada: {} caracteres", prediccionIA.length());
+
+            // 7. Construir respuesta completa
             Map<String, Object> resultado = new HashMap<>();
             resultado.put("prediccionesIA", prediccionIA);
             resultado.put("apiariosAnalizados", apiarios.size());
-            resultado.put("ubicacion", ubicacion);
-            resultado.put("temperaturaActual", temperaturaActual + "°C");
-            resultado.put("resumenHistorial", obtenerResumenHistorialGlobal(apiarios));
             resultado.put("modeloUsado", ollamaService.getModel());
+            resultado.put("ubicacion", "Dolores Hidalgo, Guanajuato, México");
+            resultado.put("temperaturaActual", String.format("%.1f°C", temperaturaActual));
+            resultado.put("estadoOllama", Map.of(
+                    "disponible", ollamaStatus.get("ollamaDisponible"),
+                    "modelo", ollamaStatus.get("modeloConfigurado"),
+                    "url", ollamaStatus.get("url")));
             resultado.put("tiempoProcesamiento", (System.currentTimeMillis() - startTime) + "ms");
+            resultado.put("timestamp", java.time.LocalDateTime.now().toString());
 
-            return new CodigoResponse<>(200, "Predicciones generadas exitosamente", resultado);
+            // Estadísticas adicionales
+            Map<String, Object> estadisticas = obtenerEstadisticas(apiarios);
+            resultado.put("estadisticas", estadisticas);
 
-        } catch (Exception e) {
-            log.error("💥 Error generando predicciones de cuidado: ", e);
-            return new CodigoResponse<>(500, "Error generando predicciones: " + e.getMessage(), null);
-        }
-    }
+            log.info("✅ Predicciones generadas exitosamente en {}ms",
+                    (System.currentTimeMillis() - startTime));
 
-    public CodigoResponse<Map<String, Object>> consultaPersonalizada(String pregunta) {
-        long startTime = System.currentTimeMillis();
+            return new CodigoResponse<>(200, "Predicciones generadas con Gemma3:4b", resultado);
 
-        try {
-            log.info("💬 Procesando consulta personalizada: {}", pregunta);
+        } catch (RuntimeException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("💥 Error en predicciones después de {}ms: {}", duration, e.getMessage(), e);
 
-            if (pregunta == null || pregunta.trim().isEmpty()) {
-                return new CodigoResponse<>(400, "La pregunta no puede estar vacía", null);
-            }
+            Map<String, Object> errorResult = new HashMap<>();
+            errorResult.put("error", e.getMessage());
+            errorResult.put("tipoError", e.getClass().getSimpleName());
+            errorResult.put("modelo", ollamaService.getModel());
+            errorResult.put("url", ollamaService.getOllamaUrl());
+            errorResult.put("duracion", duration + "ms");
+            errorResult.put("timestamp", java.time.LocalDateTime.now().toString());
+            errorResult.put("solucion",
+                    "Verificar: 1) Ollama en ejecución (docker ps), " +
+                            "2) Modelo gemma3:4b disponible (docker exec -it ollama ollama list), " +
+                            "3) Logs de Ollama (docker logs ollama)");
 
-            // Obtener datos contextuales para enriquecer la respuesta
-            String contextoApiarios = obtenerContextoApiarios();
-
-            // Preparar prompt con contexto
-            String promptCompleto = String.format(
-                    "Contexto actual del sistema apícola:\n%s\n\nPregunta del usuario: %s",
-                    contextoApiarios, pregunta);
-
-            String systemPrompt = """
-                    Eres un experto apícola especializado en manejo de colmenas, salud de abejas, producción de miel y gestión de apiarios.
-                    Responde de manera técnica pero clara en español.
-                    Sé conciso (máximo 150 palabras) pero informativo.
-                    Si la pregunta requiere datos específicos que no tienes, sugiere consultar los reportes detallados.
-                    Proporciona recomendaciones prácticas basadas en mejores prácticas apícolas.
-                    """;
-
-            String respuestaIA = ollamaService.generateAnalysis(systemPrompt, promptCompleto, 150);
-
-            Map<String, Object> resultado = new HashMap<>();
-            resultado.put("consulta", pregunta);
-            resultado.put("respuesta", respuestaIA);
-            resultado.put("contextoUtilizado", !contextoApiarios.contains("No hay datos"));
-            resultado.put("modeloUsado", ollamaService.getModel());
-            resultado.put("tiempoProcesamiento", (System.currentTimeMillis() - startTime) + "ms");
-
-            log.info("✅ Consulta procesada exitosamente");
-            return new CodigoResponse<>(200, "Consulta procesada exitosamente", resultado);
+            return new CodigoResponse<>(500, "Error generando predicciones: " + e.getMessage(), errorResult);
 
         } catch (Exception e) {
-            log.error("💥 Error en consulta personalizada: {}", e.getMessage());
-            return new CodigoResponse<>(500, "Error procesando consulta: " + e.getMessage(), null);
-        }
-    }
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("💥 Error crítico inesperado después de {}ms: {}", duration, e.getMessage(), e);
 
-    private String obtenerContextoApiarios() {
-        try {
-            CodigoResponse<List<Apiarios>> apiariosResponse = apiariosService.obtenerTodos();
-            List<Apiarios> apiarios = apiariosResponse.getData();
+            Map<String, Object> errorResult = new HashMap<>();
+            errorResult.put("error", "Error interno del servidor");
+            errorResult.put("mensaje", e.getMessage());
+            errorResult.put("tipoError", e.getClass().getSimpleName());
+            errorResult.put("duracion", duration + "ms");
+            errorResult.put("timestamp", java.time.LocalDateTime.now().toString());
 
-            if (apiarios == null || apiarios.isEmpty()) {
-                return "No hay datos de apiarios registrados en el sistema.";
-            }
-
-            StringBuilder contexto = new StringBuilder();
-            contexto.append("RESUMEN DEL SISTEMA APIARIO:\n");
-            contexto.append("• Total de apiarios: ").append(apiarios.size()).append("\n");
-
-            long conTratamiento = apiarios.stream().filter(a -> a.getReceta() != null).count();
-            contexto.append("• Apiarios con tratamiento: ").append(conTratamiento).append("\n");
-            contexto.append("• Apiarios sin tratamiento: ").append(apiarios.size() - conTratamiento).append("\n");
-
-            // Distribución de salud
-            Map<String, Long> distribucionSalud = apiarios.stream()
-                    .collect(Collectors.groupingBy(
-                            a -> a.getSalud() != null ? a.getSalud() : "No especificada",
-                            Collectors.counting()));
-
-            contexto.append("• Distribución de salud: ").append(distribucionSalud).append("\n");
-
-            return contexto.toString();
-
-        } catch (Exception e) {
-            log.warn("⚠️ No se pudo obtener contexto de apiarios: {}", e.getMessage());
-            return "No se pudieron cargar los datos actuales de apiarios.";
-        }
-    }
-
-    private String obtenerContextoSalud() {
-        try {
-            CodigoResponse<List<Apiarios>> apiariosResponse = apiariosService.obtenerTodos();
-            List<Apiarios> apiarios = apiariosResponse.getData();
-
-            if (apiarios == null || apiarios.isEmpty()) {
-                return "No hay datos de apiarios para análisis de salud.";
-            }
-
-            StringBuilder contexto = new StringBuilder();
-            contexto.append("ANÁLISIS DE SALUD APIARIA:\n");
-
-            Map<String, Long> saludStats = apiarios.stream()
-                    .collect(Collectors.groupingBy(
-                            a -> a.getSalud() != null ? a.getSalud() : "No especificada",
-                            Collectors.counting()));
-
-            saludStats.forEach((salud, count) -> {
-                contexto.append("• ").append(salud).append(": ").append(count).append(" apiarios\n");
-            });
-
-            long conHistorial = apiarios.stream()
-                    .filter(a -> a.getHistorialMedico() != null)
-                    .count();
-            contexto.append("• Apiarios con historial médico: ").append(conHistorial).append("/")
-                    .append(apiarios.size()).append("\n");
-
-            return contexto.toString();
-
-        } catch (Exception e) {
-            return "No se pudieron cargar los datos de salud.";
-        }
-    }
-
-    private String obtenerContextoProduccion() {
-        try {
-            // Aquí puedes integrar con el servicio de producción si está disponible
-            return "Datos de producción: Consulta el módulo de producción para información detallada sobre cosechas y rendimiento.";
-        } catch (Exception e) {
-            return "Información de producción no disponible actualmente.";
-        }
-    }
-
-    private String obtenerContextoClima() {
-        try {
-            double temperatura = temperaturaApia.obtenerTemperaturaActualDolores();
-            return String.format(
-                    "CONDICIONES CLIMÁTICAS ACTUALES:\n• Temperatura en Dolores Hidalgo: %.1f°C\n• Ubicación: Dolores Hidalgo, Guanajuato, México",
-                    temperatura);
-        } catch (Exception e) {
-            return "Datos climáticos no disponibles actualmente.";
-        }
-    }
-
-    private String obtenerContextoTratamientos() {
-        try {
-            CodigoResponse<List<Apiarios>> apiariosResponse = apiariosService.obtenerTodos();
-            List<Apiarios> apiarios = apiariosResponse.getData();
-
-            if (apiarios == null || apiarios.isEmpty()) {
-                return "No hay datos de tratamientos.";
-            }
-
-            long conTratamiento = apiarios.stream()
-                    .filter(a -> a.getReceta() != null)
-                    .count();
-
-            StringBuilder contexto = new StringBuilder();
-            contexto.append("ESTADO DE TRATAMIENTOS:\n");
-            contexto.append("• Apiarios con tratamiento activo: ").append(conTratamiento).append("\n");
-            contexto.append("• Apiarios sin tratamiento: ").append(apiarios.size() - conTratamiento).append("\n");
-            contexto.append("• Porcentaje en tratamiento: ")
-                    .append(String.format("%.1f%%", (conTratamiento * 100.0) / apiarios.size())).append("\n");
-
-            return contexto.toString();
-
-        } catch (Exception e) {
-            return "No se pudieron cargar los datos de tratamientos.";
-        }
-    }
-
-    private String obtenerDescripcionContexto(String tipoContexto) {
-        switch (tipoContexto.toLowerCase()) {
-            case "salud":
-                return "de Salud Apiaria";
-            case "produccion":
-                return "de Producción";
-            case "clima":
-                return "Climático";
-            case "tratamientos":
-                return "de Tratamientos Médicos";
-            default:
-                return "General del Sistema Apiario";
-        }
-    }
-
-    private String obtenerEspecializacionContexto(String tipoContexto) {
-        switch (tipoContexto.toLowerCase()) {
-            case "salud":
-                return "salud y enfermedades de las abejas";
-            case "produccion":
-                return "producción de miel y optimización de cosechas";
-            case "clima":
-                return "impacto climático en la apicultura";
-            case "tratamientos":
-                return "tratamientos médicos y manejo sanitario de colmenas";
-            default:
-                return "gestión integral de apiarios";
+            return new CodigoResponse<>(500, "Error interno al generar predicciones", errorResult);
         }
     }
 
     /**
-     * Método seguro para obtener historial médico sin errores de casteo
+     * Prepara los datos de los apiarios en formato legible para Gemma3
      */
-    private HistorialMedico obtenerHistorialMedicoSeguro(Apiarios apiario) {
-        try {
-            if (apiario.getHistorialMedico() != null && apiario.getHistorialMedico().getId() != null) {
-                CodigoResponse<?> historialResponse = apiariosService
-                        .obtenerHistorialMedicoPorId(apiario.getHistorialMedico().getId());
-
-                if (historialResponse != null && historialResponse.getData() != null) {
-                    // Verificar si el dato es ya un HistorialMedico
-                    if (historialResponse.getData() instanceof HistorialMedico) {
-                        return (HistorialMedico) historialResponse.getData();
-                    }
-                    // Si es un Map, convertirlo a HistorialMedico
-                    else if (historialResponse.getData() instanceof Map) {
-                        Map<String, Object> historialMap = (Map<String, Object>) historialResponse.getData();
-                        return convertirMapAHistorialMedico(historialMap);
-                    }
-                }
-            }
-            return null;
-        } catch (Exception e) {
-            log.warn("⚠️ No se pudo obtener el historial médico para el apiario {}: {}", apiario.getId(),
-                    e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Convierte un Map a HistorialMedico
-     */
-    private HistorialMedico convertirMapAHistorialMedico(Map<String, Object> historialMap) {
-        try {
-            HistorialMedico historial = new HistorialMedico();
-
-            if (historialMap.containsKey("id")) {
-                historial.setId(Long.valueOf(historialMap.get("id").toString()));
-            }
-            if (historialMap.containsKey("notas")) {
-                historial.setNotas(historialMap.get("notas").toString());
-            }
-            if (historialMap.containsKey("fechaAplicacion")) {
-                // Aquí necesitarías convertir el String a LocalDateTime según tu formato
-                // Por ahora lo dejamos como String o null
-            }
-
-            return historial;
-        } catch (Exception e) {
-            log.error("Error convirtiendo Map a HistorialMedico: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    private String prepararDatosParaAnalisis(List<Apiarios> apiarios) {
+    private String prepararDatosParaGemma(List<Apiarios> apiarios) {
         if (apiarios == null || apiarios.isEmpty()) {
-            return "No hay datos de apiarios disponibles para análisis.";
+            return "No hay datos de apiarios disponibles.";
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("TOTAL APIARIOS: ").append(apiarios.size()).append("\n\n");
-        sb.append("DATOS DETALLADOS CON HISTORIAL MÉDICO:\n");
+        sb.append("📊 DATOS DE APIARIOS:\n\n");
 
-        for (Apiarios apiario : apiarios) {
-            sb.append("------------------------------------------------------------\n");
-            sb.append("Apiario #").append(apiario.getNumeroApiario()).append("\n");
-            sb.append("Ubicación: ").append(apiario.getUbicacion()).append("\n");
-            sb.append("Estado de salud: ").append(apiario.getSalud()).append("\n");
+        // 1. Resumen general
+        sb.append("RESUMEN GENERAL:\n");
+        sb.append("- Total de apiarios: ").append(apiarios.size()).append("\n");
 
-            // 🏥 Historial médico completo (usando método seguro)
-            HistorialMedico historial = obtenerHistorialMedicoSeguro(apiario);
-            if (historial != null) {
-                sb.append("=== HISTORIAL MÉDICO ===\n");
-                sb.append("ID Historial: ").append(historial.getId()).append("\n");
-                sb.append("Notas: ").append(historial.getNotas()).append("\n");
-                if (historial.getFechaAplicacion() != null) {
-                    sb.append("Fecha de aplicación: ").append(historial.getFechaAplicacion()).append("\n");
-                }
-            } else {
-                sb.append("Historial médico: No disponible\n");
-            }
+        // 2. Estadísticas de tratamiento (✅ CORREGIDO: Receta es objeto)
+        long conTratamiento = apiarios.stream()
+                .filter(a -> a.getReceta() != null)
+                .count();
+        long sinTratamiento = apiarios.size() - conTratamiento;
 
-            // 💊 Receta médica actual
-            if (apiario.getReceta() != null) {
-                Receta receta = apiario.getReceta();
-                sb.append("=== TRATAMIENTO ACTUAL ===\n");
-                sb.append("Descripción: ").append(receta.getDescripcion()).append("\n");
-                sb.append("Fecha de creación: ").append(receta.getFechaDeCreacion()).append("\n");
+        sb.append("- Con tratamiento activo: ").append(conTratamiento)
+                .append(" (").append(String.format("%.1f%%", (conTratamiento * 100.0 / apiarios.size())))
+                .append(")\n");
+        sb.append("- Sin tratamiento: ").append(sinTratamiento)
+                .append(" (").append(String.format("%.1f%%", (sinTratamiento * 100.0 / apiarios.size())))
+                .append(")\n\n");
 
-                // Medicamentos de la receta
-                if (receta.getMedicamentos() != null && !receta.getMedicamentos().isEmpty()) {
-                    sb.append("Medicamentos: ");
-                    for (RecetaMedicamento medicamento : receta.getMedicamentos()) {
-                        sb.append("ID Medicamento: ").append(medicamento.getIdMedicamento());
-                        if (medicamento.getMedicamentoInfo() != null) {
-                            sb.append(" (Info disponible)");
-                        }
-                        sb.append("; ");
+        // 3. Distribución de salud
+        Map<String, Long> saludStats = apiarios.stream()
+                .collect(Collectors.groupingBy(
+                        a -> {
+                            String salud = a.getSalud();
+                            if (salud == null || salud.trim().isEmpty()) {
+                                return "No especificada";
+                            }
+                            return salud;
+                        },
+                        Collectors.counting()));
+
+        sb.append("ESTADO DE SALUD:\n");
+        saludStats.entrySet().stream()
+                .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
+                .forEach(entry -> {
+                    double porcentaje = (entry.getValue() * 100.0) / apiarios.size();
+                    sb.append("- ").append(entry.getKey()).append(": ")
+                            .append(entry.getValue())
+                            .append(" (").append(String.format("%.1f%%", porcentaje)).append(")\n");
+                });
+
+        sb.append("\n");
+
+        // 4. Apiarios con problemas de salud críticos
+        List<Apiarios> apiariosEnfermos = apiarios.stream()
+                .filter(a -> {
+                    String salud = a.getSalud();
+                    if (salud == null)
+                        return false;
+                    String saludLower = salud.toLowerCase();
+                    return saludLower.contains("enferm") ||
+                            saludLower.contains("crítico") ||
+                            saludLower.contains("grave");
+                })
+                .toList();
+
+        if (!apiariosEnfermos.isEmpty()) {
+            sb.append("⚠️ APIARIOS CON ATENCIÓN PRIORITARIA:\n");
+            apiariosEnfermos.forEach(a -> {
+                sb.append("- Apiario ID: ").append(a.getId())
+                        .append(", Estado: ").append(a.getSalud());
+
+                // ✅ CORREGIDO: Receta es objeto, mostrar si tiene receta y su descripción
+                if (a.getReceta() != null) {
+                    sb.append(", Con tratamiento activo");
+                    String descripcion = a.getReceta().getDescripcion();
+                    if (descripcion != null && !descripcion.trim().isEmpty()) {
+                        // Limitar la descripción a 50 caracteres para no saturar
+                        String descCorta = descripcion.length() > 50
+                                ? descripcion.substring(0, 50) + "..."
+                                : descripcion;
+                        sb.append(" (").append(descCorta).append(")");
                     }
-                    sb.append("\n");
                 }
-            }
-
+                sb.append("\n");
+            });
             sb.append("\n");
         }
 
-        return sb.toString();
-    }
-
-    /**
-     * Prepara la información de un apiario individual con historial médico completo
-     */
-    private String prepararInfoApiarioIndividual(Apiarios apiario, HistorialMedico historialMedico) {
-        if (apiario == null) {
-            return "No se encontró información del apiario solicitado.";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("Apiario #").append(apiario.getNumeroApiario()).append("\n");
-        sb.append("Ubicación: ").append(apiario.getUbicacion()).append("\n");
-        sb.append("Estado de salud actual: ").append(apiario.getSalud()).append("\n");
-
-        // Tratamiento actual
-        if (apiario.getReceta() != null) {
-            Receta receta = apiario.getReceta();
-            sb.append("=== TRATAMIENTO ACTUAL ===\n");
-            sb.append("Descripción: ").append(receta.getDescripcion()).append("\n");
-            sb.append("Fecha de creación: ").append(receta.getFechaDeCreacion()).append("\n");
-
-            // Medicamentos
-            if (receta.getMedicamentos() != null && !receta.getMedicamentos().isEmpty()) {
-                sb.append("Medicamentos recetados:\n");
-                for (RecetaMedicamento medicamento : receta.getMedicamentos()) {
-                    sb.append("  - ID Medicamento: ").append(medicamento.getIdMedicamento());
-                    if (medicamento.getMedicamentoInfo() != null) {
-                        sb.append(" (").append(medicamento.getMedicamentoInfo().getNombre()).append(")");
-                    }
-                    sb.append("\n");
-                }
-            }
-        } else {
-            sb.append("Tratamiento actual: No tiene tratamiento asignado\n");
-        }
-
-        // Historial médico completo
-        if (historialMedico != null) {
-            sb.append("\n=== HISTORIAL MÉDICO COMPLETO ===\n");
-            sb.append("ID Historial: ").append(historialMedico.getId()).append("\n");
-            sb.append("Notas médicas: ").append(historialMedico.getNotas()).append("\n");
-            if (historialMedico.getFechaAplicacion() != null) {
-                sb.append("Fecha de aplicación: ").append(historialMedico.getFechaAplicacion()).append("\n");
-            }
-        } else {
-            sb.append("Historial médico: No disponible\n");
-        }
+        // 5. Contexto climático
+        sb.append("CONTEXTO CLIMÁTICO:\n");
+        sb.append("- Región: Dolores Hidalgo, Guanajuato, México\n");
+        sb.append("- Clima: Templado semiárido\n");
+        sb.append("- Periodo de análisis: Próximos 30 días\n");
+        sb.append("- Consideraciones: Temporada de invierno, posibles heladas\n");
 
         return sb.toString();
     }
 
     /**
-     * Obtiene estadísticas del historial médico de todos los apiarios
+     * Obtiene estadísticas resumidas de los apiarios
      */
-    private Map<String, Object> obtenerEstadisticasHistorialMedico(List<Apiarios> apiarios) {
-        Map<String, Object> estadisticas = new HashMap<>();
-
-        long conHistorial = apiarios.stream()
-                .filter(a -> a.getHistorialMedico() != null)
-                .count();
-
-        long sinHistorial = apiarios.size() - conHistorial;
-
-        // Contar apiarios con notas en el historial
-        long conNotasMedicas = apiarios.stream()
-                .filter(a -> a.getHistorialMedico() != null)
-                .filter(a -> a.getHistorialMedico().getNotas() != null &&
-                        !a.getHistorialMedico().getNotas().isEmpty())
-                .count();
-
-        estadisticas.put("totalConHistorial", conHistorial);
-        estadisticas.put("totalSinHistorial", sinHistorial);
-        estadisticas.put("porcentajeConHistorial", String.format("%.1f%%", (conHistorial * 100.0) / apiarios.size()));
-        estadisticas.put("conNotasMedicas", conNotasMedicas);
-
-        return estadisticas;
-    }
-
-    /**
-     * Obtiene estadísticas individuales para un apiario específico
-     */
-    private Map<String, Object> obtenerEstadisticasIndividuales(Apiarios apiario, HistorialMedico historial) {
+    private Map<String, Object> obtenerEstadisticas(List<Apiarios> apiarios) {
         Map<String, Object> stats = new HashMap<>();
 
-        stats.put("tieneHistorial", historial != null);
-        stats.put("tieneTratamientoActual", apiario.getReceta() != null);
+        stats.put("totalApiarios", apiarios.size());
 
-        if (historial != null) {
-            stats.put("tieneNotasMedicas",
-                    historial.getNotas() != null && !historial.getNotas().isEmpty());
-            stats.put("fechaUltimoHistorial", historial.getFechaAplicacion());
-        }
-
-        if (apiario.getReceta() != null) {
-            stats.put("cantidadMedicamentos",
-                    apiario.getReceta().getMedicamentos() != null ? apiario.getReceta().getMedicamentos().size() : 0);
-            stats.put("fechaCreacionReceta", apiario.getReceta().getFechaDeCreacion());
-        }
-
-        return stats;
-    }
-
-    /**
-     * Obtiene un resumen global del historial médico
-     */
-    private Map<String, Object> obtenerResumenHistorialGlobal(List<Apiarios> apiarios) {
-        Map<String, Object> resumen = new HashMap<>();
-
-        List<Apiarios> apiariosConHistorial = apiarios.stream()
-                .filter(a -> a.getHistorialMedico() != null)
-                .collect(Collectors.toList());
-
-        resumen.put("totalApiariosConHistorial", apiariosConHistorial.size());
-        resumen.put("porcentajeConHistorial",
-                String.format("%.1f%%", (apiariosConHistorial.size() * 100.0) / apiarios.size()));
-
-        // Apiarios con tratamiento actual
-        long conTratamientoActual = apiarios.stream()
+        // ✅ CORREGIDO: Receta es objeto
+        long conTratamiento = apiarios.stream()
                 .filter(a -> a.getReceta() != null)
                 .count();
+        stats.put("conTratamiento", conTratamiento);
+        stats.put("sinTratamiento", apiarios.size() - conTratamiento);
 
-        resumen.put("conTratamientoActual", conTratamientoActual);
-        resumen.put("porcentajeConTratamiento",
-                String.format("%.1f%%", (conTratamientoActual * 100.0) / apiarios.size()));
+        // Distribución de salud
+        Map<String, Long> saludDistribucion = apiarios.stream()
+                .collect(Collectors.groupingBy(
+                        a -> {
+                            String salud = a.getSalud();
+                            if (salud == null || salud.trim().isEmpty()) {
+                                return "No especificada";
+                            }
+                            return salud;
+                        },
+                        Collectors.counting()));
+        stats.put("distribucionSalud", saludDistribucion);
 
-        return resumen;
+        // Contar apiarios en estado crítico
+        long estadoCritico = apiarios.stream()
+                .filter(a -> {
+                    String salud = a.getSalud();
+                    if (salud == null)
+                        return false;
+                    String saludLower = salud.toLowerCase();
+                    return saludLower.contains("enferm") ||
+                            saludLower.contains("crítico") ||
+                            saludLower.contains("grave");
+                })
+                .count();
+        stats.put("apiariosEnEstadoCritico", estadoCritico);
+
+        // ✅ NUEVO: Detalles de tratamientos
+        long conMedicamentos = apiarios.stream()
+                .filter(a -> a.getReceta() != null &&
+                        a.getReceta().getMedicamentos() != null &&
+                        !a.getReceta().getMedicamentos().isEmpty())
+                .count();
+        stats.put("apiariosConMedicamentos", conMedicamentos);
+
+        return stats;
     }
 }

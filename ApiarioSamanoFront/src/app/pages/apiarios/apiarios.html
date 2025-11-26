@@ -6,9 +6,9 @@
             <button class="btn-nuevo-apiario" (click)="abrirModalApiario()">
                 <span>➕</span> Nuevo
             </button>
-
         </div>
-                            <div class="search-box">
+        
+        <div class="search-box">
             <input 
                 type="text" 
                 placeholder="Buscar por número, tipo o ID..."
@@ -17,59 +17,61 @@
             <span class="search-icon">🔍</span>
         </div>
         
-<!-- Agrega el input de búsqueda arriba de la lista -->
-
-
-<div class="apiarios-lista">
-    <div 
-        *ngFor="let apiario of filtrarApiarios()" 
-        class="apiario-item"
-        [class.active]="apiarioSeleccionado?.id === apiario.id"
-        (click)="seleccionarApiario(apiario)">
-        <div class="apiario-header">
-            <span class="apiario-numero">Apiario #{{ apiario.numeroApiario }}</span>
-            <span class="apiario-badge" [ngClass]="obtenerClaseBadge(apiario.salud)">
-                {{ apiario.salud }}
-            </span>
-        </div>
-        <div class="apiario-datos">
-            <div class="dato-row">
-                <span class="dato-label">📍 Ubicación:</span>
-                <span class="dato-valor">{{ apiario.ubicacion }}</span>
+        <div class="apiarios-lista">
+            <div 
+                *ngFor="let apiario of filtrarApiarios()" 
+                class="apiario-item"
+                [class.active]="apiarioSeleccionado?.id === apiario.id"
+                (click)="seleccionarApiario(apiario)">
+                <div class="apiario-header">
+                    <span class="apiario-numero">Apiario #{{ apiario.numeroApiario }}</span>
+                    <span class="apiario-badge" [ngClass]="obtenerClaseBadge(apiario.salud)">
+                        {{ apiario.salud }}
+                    </span>
+                </div>
+                <div class="apiario-datos">
+                    <div class="dato-row">
+                        <span class="dato-label">📍 Ubicación:</span>
+                        <span class="dato-valor">{{ apiario.ubicacion }}</span>
+                    </div>
+                    <div class="dato-row">
+                        <span class="dato-label">💊 Receta:</span>
+                        <span class="dato-valor">{{ apiario.receta ? 'Activa' : 'Sin receta' }}</span>
+                    </div>
+                    <div class="dato-row">
+                        <span class="dato-label">📋 Historial:</span>
+                        <span class="dato-valor">{{ contarMedicamentos(apiario) }} medicamentos</span>
+                    </div>
+                    <!-- 🔗 Mostrar dispositivo vinculado -->
+                    <div class="dato-row" *ngIf="apiario.dispositivoId">
+                        <span class="dato-label">📱 Dispositivo:</span>
+                        <span class="dato-valor">{{ apiario.dispositivoId }}</span>
+                    </div>
+                </div>
+                <div class="botones-container">
+                    <button class="btn btn-editar" (click)="editarApiario(apiario, $event)">✏️ Editar</button>
+                    <button class="btn btn-receta" (click)="abrirModalReceta(apiario, $event)">💊 Receta</button>
+                    <button class="btn btn-eliminar" (click)="eliminarApiario(apiario, $event)">🗑️ Eliminar</button>
+                </div>
             </div>
-            <div class="dato-row">
-                <span class="dato-label">💊 Receta:</span>
-                <span class="dato-valor">{{ apiario.receta ? 'Activa' : 'Sin receta' }}</span>
+
+            <!-- Estados vacíos actualizados -->
+            <div *ngIf="cargando" class="empty-state">
+                <div class="empty-state-icon">⏳</div>
+                <p>Cargando apiarios...</p>
             </div>
-            <div class="dato-row">
-                <span class="dato-label">📋 Historial:</span>
-                <span class="dato-valor">{{ contarMedicamentos(apiario) }} medicamentos</span>
+
+            <div *ngIf="!cargando && apiarios.length === 0" class="empty-state">
+                <div class="empty-state-icon">🐝</div>
+                <p>No hay apiarios registrados</p>
+            </div>
+
+            <div *ngIf="!cargando && apiarios.length > 0 && filtrarApiarios().length === 0 && terminoBusqueda.trim()" class="empty-state">
+                <div class="empty-state-icon">🔍</div>
+                <p>No se encontraron apiarios con "{{terminoBusqueda}}"</p>
+                <button class="btn btn-limpiar" (click)="terminoBusqueda = ''">Limpiar búsqueda</button>
             </div>
         </div>
-        <div class="botones-container">
-            <button class="btn btn-editar" (click)="editarApiario(apiario, $event)">✏️ Editar</button>
-            <button class="btn btn-receta" (click)="abrirModalReceta(apiario, $event)">💊 Receta</button>
-            <button class="btn btn-eliminar" (click)="eliminarApiario(apiario, $event)">🗑️ Eliminar</button>
-        </div>
-    </div>
-
-    <!-- Estados vacíos actualizados -->
-    <div *ngIf="cargando" class="empty-state">
-        <div class="empty-state-icon">⏳</div>
-        <p>Cargando apiarios...</p>
-    </div>
-
-    <div *ngIf="!cargando && apiarios.length === 0" class="empty-state">
-        <div class="empty-state-icon">🐝</div>
-        <p>No hay apiarios registrados</p>
-    </div>
-
-    <div *ngIf="!cargando && apiarios.length > 0 && filtrarApiarios().length === 0 && terminoBusqueda.trim()" class="empty-state">
-        <div class="empty-state-icon">🔍</div>
-        <p>No se encontraron apiarios con "{{terminoBusqueda}}"</p>
-        <button class="btn btn-limpiar" (click)="terminoBusqueda = ''">Limpiar búsqueda</button>
-    </div>
-</div>
     </div>
 
     <!-- Panel Derecho - Detalles y Sugerencias -->
@@ -82,7 +84,7 @@
                     🐝 Apiario #{{ apiarioSeleccionado.numeroApiario }} - {{ apiarioSeleccionado.ubicacion }}
                 </h3>
                 <button class="btn-sugerencias" (click)="abrirModalSugerencias()">
-    💡          Sugerencias IA
+                    💡 Sugerencias IA
                 </button>
             </div>
 
@@ -105,6 +107,15 @@
                         <div class="dato-row">
                             <span class="dato-label">Ubicación:</span>
                             <span class="dato-valor">{{ apiarioSeleccionado.ubicacion }}</span>
+                        </div>
+                        <!-- 🔗 Información del dispositivo vinculado -->
+                        <div class="dato-row" *ngIf="apiarioSeleccionado.dispositivoId">
+                            <span class="dato-label">📱 Dispositivo:</span>
+                            <span class="dato-valor">{{ apiarioSeleccionado.dispositivoId }}</span>
+                        </div>
+                        <div class="dato-row" *ngIf="apiarioSeleccionado.fechaVinculacion">
+                            <span class="dato-label">📅 Vinculado:</span>
+                            <span class="dato-valor">{{ formatearFecha(apiarioSeleccionado.fechaVinculacion) }}</span>
                         </div>
                     </div>
                 </div>
@@ -164,353 +175,382 @@
         </div>
 
         <!-- Sugerencias -->
-<div class="sugerencias-container">
-    <div class="sugerencias-header">
-        <h3>🔮 Predicciones</h3>
-        <div class="sugerencias-meta" *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length > 0">
-            <small>📍 {{obtenerUbicacionPredicciones()}} • ⏱️ {{obtenerTiempoProcesamiento()}}</small>
-        </div>
-    </div>
-
-    <!-- Rueda de carga -->
-    <div *ngIf="cargandoRecomendaciones" class="loading-container">
-        <div class="spinner"></div>
-        <p>Analizando predicciones con IA...</p>
-    </div>
-
-    <!-- Sin datos -->
-    <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length === 0" class="no-data">
-        <p>No hay predicciones disponibles en este momento.</p>
-    </div>
-
-    <!-- Predicciones cargadas -->
-    <div *ngFor="let sugerencia of sugerenciasAutomaticas; let i = index" class="sugerencia-item">
-        <div class="sugerencia-indice">{{i + 1}}</div>
-        <div class="sugerencia-content">
-            <div class="sugerencia-titulo">{{sugerencia.titulo}}</div>
-            <div class="sugerencia-texto" [innerHTML]="formatearTextoParaHTML(sugerencia.descripcion)"></div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para Apiario -->
-<div class="modal-overlay" [class.active]="mostrarModalApiario">
-    <div class="modal">
-        <div class="modal-header">
-            <h3>{{ apiarioEditando ? 'Editar Apiario' : 'Nuevo Apiario' }}</h3>
-            <button class="btn-close" (click)="cerrarModalApiario()">×</button>
-        </div>
-        <form (ngSubmit)="guardarApiario()">
-            <div class="form-group">
-                <label>Número de Apiario</label>
-                <input type="number" [(ngModel)]="formApiario.numeroApiario" 
-                       name="numeroApiario" required placeholder="Ej: 1">
-            </div>
-            <div class="form-group">
-                <label>Ubicación</label>
-                <input type="text" [(ngModel)]="formApiario.ubicacion" 
-                       name="ubicacion" required placeholder="Ej: Campo Norte">
-            </div>
-            <div class="form-group">
-                <label>Estado de Salud</label>
-                <select [(ngModel)]="formApiario.salud" name="salud" required>
-                    <option value="">Seleccione...</option>
-                    <option value="Buena">Buena</option>
-                    <option value="Regular">Regular</option>
-                    <option value="Crítica">Crítica</option>
-                </select>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalApiario()">Cancelar</button>
-                <button type="submit" class="btn-modal btn-guardar" [disabled]="cargando">
-                    {{ cargando ? 'Guardando...' : 'Guardar' }}
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal para Receta -->
-<div class="modal-overlay" [class.active]="mostrarModalReceta">
-    <div class="modal">
-        <div class="modal-header">
-            <h3>💊 Agregar Receta Médica</h3>
-            <button class="btn-close" (click)="cerrarModalReceta()">×</button>
-        </div>
-        <form (ngSubmit)="guardarReceta()">
-            <div class="form-group">
-                <label>📝 Descripción de la Receta</label>
-                <textarea [(ngModel)]="formReceta.descripcion" 
-                          name="descripcion" rows="4" required
-                          placeholder="Describe los síntomas, tratamiento y recomendaciones..."
-                          class="descripcion-textarea"></textarea>
-            </div>
-            
-            <!-- Lista dinámica de medicamentos -->
-            <div class="medicamentos-section">
-                <div class="section-header">
-                    <label>💊 Medicamentos para la Receta</label>
-                    <button type="button" class="btn-agregar" (click)="agregarMedicamento()" 
-                            [disabled]="cargandoMedicamentos || medicamentosDisponibles.length === 0">
-                        <span *ngIf="!cargandoMedicamentos">➕</span>
-                        <span *ngIf="cargandoMedicamentos">⏳</span>
-                        {{ cargandoMedicamentos ? 'Cargando...' : 'Agregar Medicamento' }}
-                    </button>
+        <div class="sugerencias-container">
+            <div class="sugerencias-header">
+                <h3>🔮 Predicciones</h3>
+                <div class="sugerencias-meta" *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length > 0">
+                    <small>📍 {{obtenerUbicacionPredicciones()}} • ⏱️ {{obtenerTiempoProcesamiento()}}</small>
                 </div>
+            </div>
 
-                <!-- Estado de carga de medicamentos -->
-                <div *ngIf="cargandoMedicamentos" class="loading-medicamentos">
-                    <div class="loading-spinner">⏳</div>
-                    <p>Cargando lista de medicamentos disponibles...</p>
+            <!-- Rueda de carga -->
+            <div *ngIf="cargandoRecomendaciones" class="loading-container">
+                <div class="spinner"></div>
+                <p>Analizando predicciones con IA...</p>
+            </div>
+
+            <!-- Sin datos -->
+            <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length === 0" class="no-data">
+                <p>No hay predicciones disponibles en este momento.</p>
+            </div>
+
+            <!-- Predicciones cargadas -->
+            <div *ngFor="let sugerencia of sugerenciasAutomaticas; let i = index" class="sugerencia-item">
+                <div class="sugerencia-indice">{{i + 1}}</div>
+                <div class="sugerencia-content">
+                    <div class="sugerencia-titulo">{{sugerencia.titulo}}</div>
+                    <div class="sugerencia-texto" [innerHTML]="formatearTextoParaHTML(sugerencia.descripcion)"></div>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Estado sin medicamentos disponibles -->
-                <div *ngIf="!cargandoMedicamentos && medicamentosDisponibles.length === 0" class="no-medicamentos">
-                    <div class="warning-icon">⚠️</div>
-                    <p>No hay medicamentos disponibles en el inventario</p>
-                    <small>Agrega medicamentos al sistema antes de crear recetas</small>
+    <!-- Modal para Apiario -->
+    <div class="modal-overlay" [class.active]="mostrarModalApiario">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>{{ apiarioEditando ? 'Editar Apiario' : 'Nuevo Apiario' }}</h3>
+                <button class="btn-close" (click)="cerrarModalApiario()">×</button>
+            </div>
+            <form (ngSubmit)="guardarApiario()">
+                <div class="form-group">
+                    <label>Número de Apiario</label>
+                    <input type="number" [(ngModel)]="formApiario.numeroApiario" 
+                           name="numeroApiario" required placeholder="Ej: 1">
                 </div>
-
-                <!-- Información de medicamentos disponibles -->
-                <div *ngIf="!cargandoMedicamentos && medicamentosDisponibles.length > 0 && formReceta.medicamentos.length === 0" 
-                     class="medicamentos-disponibles-info">
-                    <div class="info-header">
-                        <span class="info-icon">ℹ️</span>
-                        <strong>Medicamentos disponibles: {{ medicamentosDisponibles.length }}</strong>
-                    </div>
-                    <small>Haz clic en "Agregar Medicamento" para comenzar a seleccionar</small>
+                <div class="form-group">
+                    <label>Ubicación</label>
+                    <input type="text" [(ngModel)]="formApiario.ubicacion" 
+                           name="ubicacion" required placeholder="Ej: Campo Norte">
+                </div>
+                <div class="form-group">
+                    <label>Estado de Salud</label>
+                    <select [(ngModel)]="formApiario.salud" name="salud" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Buena">Buena</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Crítica">Crítica</option>
+                    </select>
                 </div>
                 
-                <!-- Lista de medicamentos agregados -->
-                <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0">
-                    <div *ngFor="let medicamento of formReceta.medicamentos; let i = index" 
-                         class="medicamento-item">
-                        <div class="medicamento-header">
-                            <span class="medicamento-numero">Medicamento {{ i + 1 }}</span>
-                            <button type="button" class="btn-eliminar-medicamento" 
-                                    (click)="removerMedicamento(i)">
-                                🗑️ Eliminar
-                            </button>
+                <!-- 🔗 Nuevo campo para seleccionar dispositivo -->
+                <!-- En el modal de apiario, modifica el selector: -->
+<div class="form-group">
+  <label>📱 Dispositivos Asignados</label>
+  <select [(ngModel)]="dispositivoSeleccionado" name="dispositivoId" (change)="onDispositivoSeleccionado()">
+    <option value="">Sin dispositivo</option>
+    <option *ngFor="let dispositivo of dispositivosAsignadosList" 
+            [value]="dispositivo.dispositivoId">
+      {{ dispositivo.dispositivoId }} 
+      <span *ngIf="dispositivo.tipo">- {{ dispositivo.tipo }}</span>
+      <span *ngIf="dispositivo.sensores"> (Sensores: {{ dispositivo.sensores?.join(', ') }})</span>
+      <span class="text-asignado"> - ✅ Asignado a {{dispositivo.apiarioId}}</span>
+    </option>
+  </select>
+  <small class="text-hint" *ngIf="dispositivosDisponibles.length === 0">
+    No hay dispositivos detectados
+  </small>
+  <small class="text-hint" *ngIf="dispositivosDisponibles.length > 0">
+    {{ dispositivosAsignadosCount }} de {{ dispositivosTotalCount }} dispositivo(s) asignado(s)
+  </small>
+  
+  <!-- 🔥 NUEVO: Mostrar qué se enviará -->
+  <div *ngIf="apiarioIdDelDispositivo" class="info-envio">
+    <small>📤 Se enviará: <strong>{{ apiarioIdDelDispositivo }}</strong> (apiarioId del dispositivo)</small>
+  </div>
+</div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalApiario()">Cancelar</button>
+                    <button type="submit" class="btn-modal btn-guardar" [disabled]="cargando">
+                        {{ cargando ? 'Guardando...' : 'Guardar' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Receta -->
+    <div class="modal-overlay" [class.active]="mostrarModalReceta">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💊 Agregar Receta Médica</h3>
+                <button class="btn-close" (click)="cerrarModalReceta()">×</button>
+            </div>
+            <form (ngSubmit)="guardarReceta()">
+                <div class="form-group">
+                    <label>📝 Descripción de la Receta</label>
+                    <textarea [(ngModel)]="formReceta.descripcion" 
+                              name="descripcion" rows="4" required
+                              placeholder="Describe los síntomas, tratamiento y recomendaciones..."
+                              class="descripcion-textarea"></textarea>
+                </div>
+                
+                <!-- Lista dinámica de medicamentos -->
+                <div class="medicamentos-section">
+                    <div class="section-header">
+                        <label>💊 Medicamentos para la Receta</label>
+                        <button type="button" class="btn-agregar" (click)="agregarMedicamento()" 
+                                [disabled]="cargandoMedicamentos || medicamentosDisponibles.length === 0">
+                            <span *ngIf="!cargandoMedicamentos">➕</span>
+                            <span *ngIf="cargandoMedicamentos">⏳</span>
+                            {{ cargandoMedicamentos ? 'Cargando...' : 'Agregar Medicamento' }}
+                        </button>
+                    </div>
+
+                    <!-- Estado de carga de medicamentos -->
+                    <div *ngIf="cargandoMedicamentos" class="loading-medicamentos">
+                        <div class="loading-spinner">⏳</div>
+                        <p>Cargando lista de medicamentos disponibles...</p>
+                    </div>
+
+                    <!-- Estado sin medicamentos disponibles -->
+                    <div *ngIf="!cargandoMedicamentos && medicamentosDisponibles.length === 0" class="no-medicamentos">
+                        <div class="warning-icon">⚠️</div>
+                        <p>No hay medicamentos disponibles en el inventario</p>
+                        <small>Agrega medicamentos al sistema antes de crear recetas</small>
+                    </div>
+
+                    <!-- Información de medicamentos disponibles -->
+                    <div *ngIf="!cargandoMedicamentos && medicamentosDisponibles.length > 0 && formReceta.medicamentos.length === 0" 
+                         class="medicamentos-disponibles-info">
+                        <div class="info-header">
+                            <span class="info-icon">ℹ️</span>
+                            <strong>Medicamentos disponibles: {{ medicamentosDisponibles.length }}</strong>
                         </div>
-                        
-                        <div class="form-group">
-                            <label>Seleccionar Medicamento *</label>
-                            <select 
-                                [(ngModel)]="medicamento.id" 
-                                [name]="'medicamentoId_' + i"
-                                required
-                                class="medicamento-select">
-                                <option [value]="0">-- Selecciona un medicamento --</option>
-                                <option *ngFor="let med of medicamentosDisponibles" 
-                                        [value]="med.id"
-                                        [disabled]="esMedicamentoDuplicado(med.id, i)">
-                                    {{ med.nombre }} - {{ med.descripcion }} (Stock: {{ med.cantidad }})
-                                </option>
-                            </select>
+                        <small>Haz clic en "Agregar Medicamento" para comenzar a seleccionar</small>
+                    </div>
+                    
+                    <!-- Lista de medicamentos agregados -->
+                    <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0">
+                        <div *ngFor="let medicamento of formReceta.medicamentos; let i = index" 
+                             class="medicamento-item">
+                            <div class="medicamento-header">
+                                <span class="medicamento-numero">Medicamento {{ i + 1 }}</span>
+                                <button type="button" class="btn-eliminar-medicamento" 
+                                        (click)="removerMedicamento(i)">
+                                    🗑️ Eliminar
+                                </button>
+                            </div>
                             
-                            <!-- Mostrar información del medicamento seleccionado -->
-                            <div *ngIf="medicamento.id > 0" class="medicamento-info">
-                                <div class="medicamento-detalle">
-                                    <strong>✅ Seleccionado:</strong> {{ obtenerNombreMedicamento(medicamento.id) }}
+                            <div class="form-group">
+                                <label>Seleccionar Medicamento *</label>
+                                <select 
+                                    [(ngModel)]="medicamento.id" 
+                                    [name]="'medicamentoId_' + i"
+                                    required
+                                    class="medicamento-select">
+                                    <option [value]="0">-- Selecciona un medicamento --</option>
+                                    <option *ngFor="let med of medicamentosDisponibles" 
+                                            [value]="med.id"
+                                            [disabled]="esMedicamentoDuplicado(med.id, i)">
+                                        {{ med.nombre }} - {{ med.descripcion }} (Stock: {{ med.cantidad }})
+                                    </option>
+                                </select>
+                                
+                                <!-- Mostrar información del medicamento seleccionado -->
+                                <div *ngIf="medicamento.id > 0" class="medicamento-info">
+                                    <div class="medicamento-detalle">
+                                        <strong>✅ Seleccionado:</strong> {{ obtenerNombreMedicamento(medicamento.id) }}
+                                    </div>
+                                    <div class="medicamento-stock" *ngIf="obtenerStockMedicamento(medicamento.id) !== undefined">
+                                        <strong>📦 Stock disponible:</strong> {{ obtenerStockMedicamento(medicamento.id) }} unidades
+                                    </div>
                                 </div>
-                                <div class="medicamento-stock" *ngIf="obtenerStockMedicamento(medicamento.id) !== undefined">
-                                    <strong>📦 Stock disponible:</strong> {{ obtenerStockMedicamento(medicamento.id) }} unidades
-                                </div>
-                            </div>
 
-                            <!-- Advertencia si el medicamento ya fue seleccionado -->
-                            <div *ngIf="medicamento.id > 0 && esMedicamentoDuplicado(medicamento.id, i)" 
-                                 class="medicamento-duplicado">
-                                ⚠️ Este medicamento ya fue agregado a la receta
+                                <!-- Advertencia si el medicamento ya fue seleccionado -->
+                                <div *ngIf="medicamento.id > 0 && esMedicamentoDuplicado(medicamento.id, i)" 
+                                     class="medicamento-duplicado">
+                                    ⚠️ Este medicamento ya fue agregado a la receta
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Resumen de la receta -->
-            <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0" class="resumen-receta">
-                <div class="resumen-header">
-                    <h4>📋 Resumen de la Receta</h4>
-                </div>
-                <div class="resumen-content">
-                    <div class="resumen-item">
-                        <span class="resumen-label">Total de medicamentos:</span>
-                        <span class="resumen-value">{{ contarMedicamentosSeleccionados() }} de {{ formReceta.medicamentos.length }}</span>
+                <!-- Resumen de la receta -->
+                <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0" class="resumen-receta">
+                    <div class="resumen-header">
+                        <h4>📋 Resumen de la Receta</h4>
                     </div>
-                    <div class="resumen-item" *ngIf="contarMedicamentosSeleccionados() > 0">
-                        <span class="resumen-label">Medicamentos seleccionados:</span>
-                        <span class="resumen-value">
-                            <span *ngFor="let med of obtenerMedicamentosSeleccionados(); let last = last">
-                                {{ obtenerNombreMedicamento(med.id) }}{{ !last ? ', ' : '' }}
+                    <div class="resumen-content">
+                        <div class="resumen-item">
+                            <span class="resumen-label">Total de medicamentos:</span>
+                            <span class="resumen-value">{{ contarMedicamentosSeleccionados() }} de {{ formReceta.medicamentos.length }}</span>
+                        </div>
+                        <div class="resumen-item" *ngIf="contarMedicamentosSeleccionados() > 0">
+                            <span class="resumen-label">Medicamentos seleccionados:</span>
+                            <span class="resumen-value">
+                                <span *ngFor="let med of obtenerMedicamentosSeleccionados(); let last = last">
+                                    {{ obtenerNombreMedicamento(med.id) }}{{ !last ? ', ' : '' }}
+                                </span>
                             </span>
-                        </span>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <div class="modal-actions">
-                <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalReceta()" [disabled]="cargando">
-                    ❌ Cancelar
-                </button>
-                <button type="submit" class="btn-modal btn-guardar" 
-                        [disabled]="cargando || formReceta.medicamentos.length === 0 || cargandoMedicamentos || tieneMedicamentosInvalidos()">
-                    <span *ngIf="!cargando">💾</span>
-                    <span *ngIf="cargando">⏳</span>
-                    {{ cargando ? 'Guardando...' : 'Guardar Receta' }}
-                </button>
-            </div>
-
-            <!-- Validaciones -->
-            <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0" class="validaciones">
-                <div *ngIf="tieneMedicamentosSinSeleccionar()" class="validacion-error">
-                    ⚠️ Todos los medicamentos deben estar seleccionados
-                </div>
-                <div *ngIf="tieneMedicamentosDuplicados()" class="validacion-error">
-                    ⚠️ Hay medicamentos duplicados en la receta
-                </div>
-                <div *ngIf="!tieneMedicamentosInvalidos()" class="validacion-success">
-                    ✅ Receta lista para guardar
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal de Sugerencias IA -->
-<!-- Modal de Sugerencias IA -->
-<div class="modal-overlay" [class.active]="mostrarModalSugerencias">
-    <div class="modal modal-sugerencias">
-        <div class="modal-header">
-            <h3>💡 Asistente IA - Apiario #{{apiarioSeleccionado?.numeroApiario}}</h3>
-            <button class="btn-close" (click)="cerrarModalSugerencias()">×</button>
-        </div>
-
-        <div class="modal-content">
-            <!-- Resumen del Apiario -->
-            <div class="resumen-apiario">
-                <div class="resumen-header">
-                    <h4>📊 Resumen del Apiario</h4>
-                </div>
-                <div class="resumen-datos">
-                    <div class="dato-resumen">
-                        <span class="dato-label">📍 Ubicación:</span>
-                        <span class="dato-valor">{{apiarioSeleccionado?.ubicacion}}</span>
-                    </div>
-                    <div class="dato-resumen">
-                        <span class="dato-label">❤️ Estado de Salud:</span>
-                        <span class="dato-valor" [class]="'salud-' + apiarioSeleccionado?.salud?.toLowerCase()">
-                            {{apiarioSeleccionado?.salud}}
-                        </span>
-                    </div>
-                    <div class="dato-resumen">
-                        <span class="dato-label">💊 Receta Activa:</span>
-                        <span class="dato-valor">
-                            {{apiarioSeleccionado?.receta ? 'Sí' : 'No'}}
-                        </span>
-                    </div>
-                    <div class="dato-resumen" *ngIf="apiarioSeleccionado?.receta">
-                        <span class="dato-label">📝 Descripción:</span>
-                        <span class="dato-valor">{{apiarioSeleccionado?.receta?.descripcion}}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ✅ ÚNICO DIV PARA SUGERENCIAS - CON ESTADO DE CARGA -->
-            <div class="sugerencias-automaticas">
-                <div class="sugerencias-header">
-                    <h4>🎯 Recomendaciones de IA</h4>
-                    <span class="badge-ia">🤖</span>
                 </div>
                 
-                <!-- Estado de carga -->
-                <div *ngIf="cargandoRecomendaciones" class="cargando-sugerencias">
-                    <div class="spinner-ia">⏳</div>
-                    <p>Generando recomendaciones personalizadas...</p>
-                    <small>Analizando datos del apiario #{{apiarioSeleccionado?.numeroApiario}}</small>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalReceta()" [disabled]="cargando">
+                        ❌ Cancelar
+                    </button>
+                    <button type="submit" class="btn-modal btn-guardar" 
+                            [disabled]="cargando || formReceta.medicamentos.length === 0 || cargandoMedicamentos || tieneMedicamentosInvalidos()">
+                        <span *ngIf="!cargando">💾</span>
+                        <span *ngIf="cargando">⏳</span>
+                        {{ cargando ? 'Guardando...' : 'Guardar Receta' }}
+                    </button>
                 </div>
 
-                <!-- Sugerencias generadas por IA -->
-                <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length > 0" class="sugerencias-lista">
-                    <div class="sugerencia-auto-item" *ngFor="let sugerencia of sugerenciasAutomaticas; let i = index">
-                        <div class="sugerencia-icono">💡</div>
-                        <div class="sugerencia-contenido">
-                            <div class="sugerencia-descripcion">{{sugerencia.descripcion}}</div>
+                <!-- Validaciones -->
+                <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0" class="validaciones">
+                    <div *ngIf="tieneMedicamentosSinSeleccionar()" class="validacion-error">
+                        ⚠️ Todos los medicamentos deben estar seleccionados
+                    </div>
+                    <div *ngIf="tieneMedicamentosDuplicados()" class="validacion-error">
+                        ⚠️ Hay medicamentos duplicados en la receta
+                    </div>
+                    <div *ngIf="!tieneMedicamentosInvalidos()" class="validacion-success">
+                        ✅ Receta lista para guardar
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Sugerencias IA -->
+    <div class="modal-overlay" [class.active]="mostrarModalSugerencias">
+        <div class="modal modal-sugerencias">
+            <div class="modal-header">
+                <h3>💡 Asistente IA - Apiario #{{apiarioSeleccionado?.numeroApiario}}</h3>
+                <button class="btn-close" (click)="cerrarModalSugerencias()">×</button>
+            </div>
+
+            <div class="modal-content">
+                <!-- Resumen del Apiario -->
+                <div class="resumen-apiario">
+                    <div class="resumen-header">
+                        <h4>📊 Resumen del Apiario</h4>
+                    </div>
+                    <div class="resumen-datos">
+                        <div class="dato-resumen">
+                            <span class="dato-label">📍 Ubicación:</span>
+                            <span class="dato-valor">{{apiarioSeleccionado?.ubicacion}}</span>
+                        </div>
+                        <div class="dato-resumen">
+                            <span class="dato-label">❤️ Estado de Salud:</span>
+                            <span class="dato-valor" [class]="'salud-' + apiarioSeleccionado?.salud?.toLowerCase()">
+                                {{apiarioSeleccionado?.salud}}
+                            </span>
+                        </div>
+                        <div class="dato-resumen">
+                            <span class="dato-label">💊 Receta Activa:</span>
+                            <span class="dato-valor">
+                                {{apiarioSeleccionado?.receta ? 'Sí' : 'No'}}
+                            </span>
+                        </div>
+                        <div class="dato-resumen" *ngIf="apiarioSeleccionado?.receta">
+                            <span class="dato-label">📝 Descripción:</span>
+                            <span class="dato-valor">{{apiarioSeleccionado?.receta?.descripcion}}</span>
+                        </div>
+                        <!-- 🔗 Información del dispositivo en el resumen -->
+                        <div class="dato-resumen" *ngIf="apiarioSeleccionado?.dispositivoId">
+                            <span class="dato-label">📱 Dispositivo:</span>
+                            <span class="dato-valor">{{apiarioSeleccionado?.dispositivoId}}</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Sin sugerencias disponibles -->
-                <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length === 0" class="sin-sugerencias">
-                    <div class="sin-sugerencias-icono">🤖</div>
-                    <p>No hay recomendaciones disponibles en este momento</p>
-                    <small>Intenta recargar o consulta directamente en el chat</small>
-                    <button class="btn-reintentar" (click)="obtenerRecomendacionesIA()">
-                        🔄 Reintentar
-                    </button>
-                </div>
-            </div>
+                <!-- ✅ ÚNICO DIV PARA SUGERENCIAS - CON ESTADO DE CARGA -->
+                <div class="sugerencias-automaticas">
+                    <div class="sugerencias-header">
+                        <h4>🎯 Recomendaciones de IA</h4>
+                        <span class="badge-ia">🤖</span>
+                    </div>
+                    
+                    <!-- Estado de carga -->
+                    <div *ngIf="cargandoRecomendaciones" class="cargando-sugerencias">
+                        <div class="spinner-ia">⏳</div>
+                        <p>Generando recomendaciones personalizadas...</p>
+                        <small>Analizando datos del apiario #{{apiarioSeleccionado?.numeroApiario}}</small>
+                    </div>
 
-            <!-- Chat con IA -->
-<!-- Chat con IA -->
-<div class="chat-ia">
-    <div class="chat-header">
-        <h4>💬 Consulta Específica</h4>
-        <span class="badge-online" [class.badge-offline]="cargandoChat"> 
-            {{ cargandoChat ? 'Procesando...' : 'En línea' }}
-        </span>
-    </div>
-    
-    <div class="chat-messages">
-        <!-- Mensajes del chat -->
-        <div *ngFor="let mensaje of mensajesChat" 
-             class="message" 
-             [class.user-message]="mensaje.tipo === 'usuario'" 
-             [class.ia-message]="mensaje.tipo === 'ia'"
-             [class.message-enviando]="mensaje.estado === 'enviando'"
-             [class.message-error]="mensaje.estado === 'error'">
-            
-            <div class="message-avatar" *ngIf="mensaje.tipo === 'ia'">🤖</div>
-            
-            <div class="message-content">
-                <div class="message-text">
-                    {{ mensaje.texto }}
-                    <!-- Indicador de escritura -->
-                    <div *ngIf="mensaje.estado === 'enviando'" class="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                    <!-- Sugerencias generadas por IA -->
+                    <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length > 0" class="sugerencias-lista">
+                        <div class="sugerencia-auto-item" *ngFor="let sugerencia of sugerenciasAutomaticas; let i = index">
+                            <div class="sugerencia-icono">💡</div>
+                            <div class="sugerencia-contenido">
+                                <div class="sugerencia-descripcion">{{sugerencia.descripcion}}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sin sugerencias disponibles -->
+                    <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length === 0" class="sin-sugerencias">
+                        <div class="sin-sugerencias-icono">🤖</div>
+                        <p>No hay recomendaciones disponibles en este momento</p>
+                        <small>Intenta recargar o consulta directamente en el chat</small>
+                        <button class="btn-reintentar" (click)="obtenerRecomendacionesIA()">
+                            🔄 Reintentar
+                        </button>
                     </div>
                 </div>
-                <div class="message-time">{{ mensaje.tiempo }}</div>
+
+                <!-- Chat con IA -->
+                <div class="chat-ia">
+                    <div class="chat-header">
+                        <h4>💬 Consulta Específica</h4>
+                        <span class="badge-online" [class.badge-offline]="cargandoChat"> 
+                            {{ cargandoChat ? 'Procesando...' : 'En línea' }}
+                        </span>
+                    </div>
+                    
+                    <div class="chat-messages">
+                        <!-- Mensajes del chat -->
+                        <div *ngFor="let mensaje of mensajesChat" 
+                             class="message" 
+                             [class.user-message]="mensaje.tipo === 'usuario'" 
+                             [class.ia-message]="mensaje.tipo === 'ia'"
+                             [class.message-enviando]="mensaje.estado === 'enviando'"
+                             [class.message-error]="mensaje.estado === 'error'">
+                            
+                            <div class="message-avatar" *ngIf="mensaje.tipo === 'ia'">🤖</div>
+                            
+                            <div class="message-content">
+                                <div class="message-text">
+                                    {{ mensaje.texto }}
+                                    <!-- Indicador de escritura -->
+                                    <div *ngIf="mensaje.estado === 'enviando'" class="typing-indicator">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </div>
+                                <div class="message-time">{{ mensaje.tiempo }}</div>
+                            </div>
+                            
+                            <div class="message-avatar" *ngIf="mensaje.tipo === 'usuario'">👤</div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <textarea 
+                            [(ngModel)]="nuevaPregunta" 
+                            placeholder="Escribe tu pregunta sobre el apiario..."
+                            class="chat-input"
+                            (keydown)="onChatKeydown($event)"
+                            [disabled]="cargandoChat"
+                            rows="1"
+                        ></textarea>
+                        <button class="btn-enviar" 
+                                (click)="enviarPregunta()" 
+                                [disabled]="!nuevaPregunta.trim() || cargandoChat">
+                            <span *ngIf="!cargandoChat"></span>
+                            <span *ngIf="cargandoChat" class="spinner-mini">⏳</span>
+                            {{ cargandoChat ? 'Enviando...' : 'Enviar' }}
+                        </button>
+                    </div>
+                </div>
             </div>
-            
-            <div class="message-avatar" *ngIf="mensaje.tipo === 'usuario'">👤</div>
-        </div>
-    </div>
-
-    <div class="chat-input-container">
-        <textarea 
-            [(ngModel)]="nuevaPregunta" 
-            placeholder="Escribe tu pregunta sobre el apiario..."
-            class="chat-input"
-            (keydown)="onChatKeydown($event)"
-            [disabled]="cargandoChat"
-            rows="1"
-        ></textarea>
-        <button class="btn-enviar" 
-                (click)="enviarPregunta()" 
-                [disabled]="!nuevaPregunta.trim() || cargandoChat">
-            <span *ngIf="!cargandoChat"></span>
-            <span *ngIf="cargandoChat" class="spinner-mini">⏳</span>
-            {{ cargandoChat ? 'Enviando...' : 'Enviar' }}
-        </button>
-    </div>
-</div>
-
-
-
-
         </div>
     </div>
 </div>

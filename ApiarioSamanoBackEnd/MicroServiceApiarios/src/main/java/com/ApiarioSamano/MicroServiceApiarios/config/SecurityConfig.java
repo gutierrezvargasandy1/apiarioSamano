@@ -27,13 +27,27 @@ public class SecurityConfig {
                 })
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
+                        // 🔐 Endpoints protegidos
                         .requestMatchers("/apiarios/admin/**").authenticated()
                         .requestMatchers("/historial-medico/admin/**").authenticated()
                         .requestMatchers("/api/recetas/**").authenticated()
                         .requestMatchers("/api/receta-medicamento/**").authenticated()
                         .requestMatchers("/api/historial-recetas/**").authenticated()
+
+                        // 🔐 Endpoints de MQTT y actuadores (también requieren JWT)
+                        .requestMatchers(
+                                "/api/apiarios/mqtt/**",
+                                "/api/apiarios/*/ventilador/**",
+                                "/api/apiarios/*/luz/**",
+                                "/api/apiarios/*/servo/**")
+                        .permitAll()
+
+                        // 🔓 Cualquier otro endpoint se permite sin JWT
                         .anyRequest().permitAll())
+
+                // Filtro JWT
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

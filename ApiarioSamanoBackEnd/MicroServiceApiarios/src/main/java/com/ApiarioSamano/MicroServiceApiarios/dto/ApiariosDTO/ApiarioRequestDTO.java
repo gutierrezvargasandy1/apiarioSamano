@@ -11,5 +11,6 @@ public class ApiarioRequestDTO {
     private Integer numeroApiario;
     private String ubicacion;
     private String salud;
+    private String dispositivoId;
 
 }

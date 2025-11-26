@@ -1,10 +1,12 @@
 package com.ApiarioSamano.MicroServiceApiarios.factory;
 
+import org.springframework.stereotype.Component;
+
 import com.ApiarioSamano.MicroServiceApiarios.dto.HistorialMedicoDTO.HistorialMedicoDTO;
 import com.ApiarioSamano.MicroServiceApiarios.model.HistorialMedico;
 
-public class HistorialMedicoFactory implements Factory<HistorialMedico,HistorialMedicoDTO> {
-
+@Component
+public class HistorialMedicoFactory implements Factory<HistorialMedico, HistorialMedicoDTO> {
 
     @Override
     public HistorialMedico crear(HistorialMedicoDTO data) {
@@ -13,6 +15,4 @@ public class HistorialMedicoFactory implements Factory<HistorialMedico,Historial
         return historial;
     }
 
-
-    
 }

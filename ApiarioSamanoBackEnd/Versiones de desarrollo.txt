@@ -108,3 +108,195 @@ curl.exe -X POST "http://localhost:8086/api/proveedores" ^
   -F "nombreReprecentante=Juan Pérez" ^
   -F "materialProvee=Miel y cera" ^
   -F "fotografia=@C:\Users\andre\OneDrive\Imágenes\Capturas de pantalla\Captura de pantalla 2025-08-21 191639.png"
+
+
+
+
+//codigo esp32
+
+import network
+from umqtt.simple import MQTTClient
+import time
+import machine
+import dht
+import ujson
+
+# =====================
+# CONFIGURACIÓN GENERAL
+# =====================
+APIARIO_ID = "apiario_001"  
+DISPOSITIVO_ID = machine.unique_id()  # ID único del dispositivo
+DISPOSITIVO_ID_HEX = "".join("{:02x}".format(b) for b in DISPOSITIVO_ID)
+
+ssid = "INFINITUMF116_EXT"
+password = "X4s9xzFrsx"
+mqtt_server = "192.168.1.101"
+
+# Topics ESPECÍFICOS
+TOPIC_REGISTRO = "apiarios/dispositivos/registro"  # Nuevo topic para registro
+TOPIC_STATUS = f"apiarios/{APIARIO_ID}/status"
+TOPIC_TEMPERATURA = f"apiarios/{APIARIO_ID}/temperatura" 
+TOPIC_HUMEDAD = f"apiarios/{APIARIO_ID}/humedad"
+TOPIC_SERVO1 = f"apiarios/{APIARIO_ID}/comandos/servo1"
+TOPIC_SERVO2 = f"apiarios/{APIARIO_ID}/comandos/servo2"
+TOPIC_MOTOR = f"apiarios/{APIARIO_ID}/comandos/motor"
+TOPIC_RGB = f"apiarios/{APIARIO_ID}/comandos/rgb"
+
+# =====================
+# HARDWARE
+# =====================
+# DHT22 en pin 14
+sensor = dht.DHT22(machine.Pin(14))
+
+# Servos
+servo1 = machine.PWM(machine.Pin(15), freq=50)
+servo2 = machine.PWM(machine.Pin(27), freq=50)
+
+# Motor DC con L298N
+IN1 = machine.Pin(5, machine.Pin.OUT)
+IN2 = machine.Pin(18, machine.Pin.OUT)
+
+# LED RGB (anodo común o cátodo común)
+led_r = machine.Pin(21, machine.Pin.OUT)
+led_g = machine.Pin(22, machine.Pin.OUT)
+led_b = machine.Pin(23, machine.Pin.OUT)
+
+# =====================
+# FUNCIONES DE CONTROL
+# =====================
+def mover_servo(pwm, grados):
+    duty = int((grados / 180) * 102) + 26
+    pwm.duty(duty)
+    print("Servo movido:", grados)
+
+def motor_on():
+    IN1.value(1)
+    IN2.value(0)
+    print("Motor ENCENDIDO")
+
+def motor_off():
+    IN1.value(0)
+    IN2.value(0)
+    print("Motor APAGADO")
+
+def set_rgb(r, g, b):
+    led_r.value(0 if r else 1)
+    led_g.value(0 if g else 1)
+    led_b.value(0 if b else 1)
+    print("RGB ->", r, g, b)
+
+# =====================
+# MQTT CALLBACK
+# =====================
+def on_message(topic, msg):
+    print("Comando recibido:", topic.decode(), msg.decode())
+    
+    t = topic.decode()
+    m = msg.decode()
+    
+    if t == TOPIC_SERVO1:
+        mover_servo(servo1, int(m))
+    elif t == TOPIC_SERVO2:
+        mover_servo(servo2, int(m))
+    elif t == TOPIC_MOTOR:
+        if m.upper() == "ON":
+            motor_on()
+        else:
+            motor_off()
+    elif t == TOPIC_RGB:
+        try:
+            r, g, b = m.split(",")
+            set_rgb(int(r), int(g), int(b))
+        except:
+            print("RGB inválido (use: 1,0,1)")
+
+# =====================
+# CONEXIONES
+# =====================
+def connect_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(ssid, password)
+    print("Conectando a WiFi...")
+    while not wlan.isconnected():
+        time.sleep(0.5)
+    print("Conectado:", wlan.ifconfig())
+
+def connect_mqtt():
+    client = MQTTClient(DISPOSITIVO_ID_HEX, mqtt_server)
+    client.set_callback(on_message)
+    client.connect()
+    print("Conectado a MQTT")
+    
+    # Suscribir a topics
+    client.subscribe(TOPIC_SERVO1)
+    client.subscribe(TOPIC_SERVO2)
+    client.subscribe(TOPIC_MOTOR)
+    client.subscribe(TOPIC_RGB)
+    print("Suscrito a topics de actuadores")
+    
+    return client
+
+def enviar_registro(client):
+    """Envía información de registro del dispositivo"""
+    registro = {
+        "dispositivoId": DISPOSITIVO_ID_HEX,
+        "apiarioId": APIARIO_ID,
+        "tipo": "ESP32_DHT22",
+        "sensores": ["temperatura", "humedad"],
+        "actuadores": ["servo1", "servo2", "motor_dc", "led_rgb"],
+        "timestamp": time.time()
+    }
+    
+    try:
+        mensaje = ujson.dumps(registro)
+        client.publish(TOPIC_REGISTRO, mensaje, retain=True)
+        print("✅ Registro enviado:", mensaje)
+        return True
+    except Exception as e:
+        print("❌ Error al enviar registro:", e)
+        return False
+
+# =====================
+# LOOP PRINCIPAL
+# =====================
+try:
+    print("=" * 40)
+    print("🐝 SISTEMA APIARIO INTELIGENTE")
+    print("Dispositivo ID:", DISPOSITIVO_ID_HEX)
+    print("Apiario ID:", APIARIO_ID)
+    print("=" * 40)
+    
+    connect_wifi()
+    client = connect_mqtt()
+    
+    # ENVIAR REGISTRO AL INICIAR
+    print("📡 Enviando registro al servidor...")
+    enviar_registro(client)
+    time.sleep(2)  # Esperar confirmación
+    
+    # Publicar estado online
+    client.publish(TOPIC_STATUS, "online")
+    
+    print("🟢 Sistema iniciado - Loop principal")
+    
+    while True:
+        try:
+            sensor.measure()
+            temp = sensor.temperature()
+            hum = sensor.humidity()
+            
+            client.publish(TOPIC_TEMPERATURA, str(temp))
+            client.publish(TOPIC_HUMEDAD, str(hum))
+            print("📊 Temp:", temp, "°C | Hum:", hum, "%")
+            
+        except Exception as e:
+            print("⚠️ Error sensor:", e)
+        
+        client.check_msg()
+        time.sleep(5)
+        
+except Exception as e:
+    print("❌ ERROR FATAL:", e)
+    time.sleep(10)
+    machine.reset()

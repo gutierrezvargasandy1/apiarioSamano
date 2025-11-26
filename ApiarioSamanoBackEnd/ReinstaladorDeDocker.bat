@@ -5,7 +5,7 @@ echo =====================================================
 echo 🚀 INICIANDO PROCESO DE REINSTALACIÓN Y CREACIÓN DE IMÁGENES DOCKER
 echo =====================================================
 
-cd /d "C:\Users\andre\Downloads\ApiarioSamano\ApiarioSamanoBackEnd"
+cd /d "C:\Users\andre\OneDrive\Escritorio\apiarioSamano\ApiarioSamanoBackEnd"
 
 :: =============================
 :: VERIFICAR SI DOCKER ESTÁ EJECUTÁNDOSE
