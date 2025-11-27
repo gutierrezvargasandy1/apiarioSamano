@@ -74,7 +74,7 @@
         </div>
     </div>
 
-    <!-- Panel Derecho - Detalles y Sugerencias -->
+    <!-- Panel Derecho - Detalles y Gestión ESP32 -->
     <div class="right-panel">
         <!-- Detalles del Apiario -->
         <div class="detalle-container">
@@ -174,33 +174,105 @@
             </div>
         </div>
 
-        <!-- Sugerencias -->
-        <div class="sugerencias-container">
-            <div class="sugerencias-header">
-                <h3>🔮 Predicciones</h3>
-                <div class="sugerencias-meta" *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length > 0">
-                    <small>📍 {{obtenerUbicacionPredicciones()}} • ⏱️ {{obtenerTiempoProcesamiento()}}</small>
-                </div>
+        <!-- Gestión ESP32 - ACTUALIZADO -->
+        <div class="gestion-esp32-container">
+            <div class="gestion-header">
+                <h3>⚡ Control ESP32</h3>
+              
             </div>
 
-            <!-- Rueda de carga -->
-            <div *ngIf="cargandoRecomendaciones" class="loading-container">
+            <!-- Estado de carga -->
+            <div *ngIf="cargandoDispositivos" class="loading-container">
                 <div class="spinner"></div>
-                <p>Analizando predicciones con IA...</p>
+                <p>Buscando dispositivos ESP32...</p>
             </div>
 
-            <!-- Sin datos -->
-            <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length === 0" class="no-data">
-                <p>No hay predicciones disponibles en este momento.</p>
+            <!-- Sin dispositivo vinculado -->
+            <div *ngIf="!cargandoDispositivos && !apiarioSeleccionado?.dispositivoId" class="no-device">
+                <div class="no-device-icon"></div>
+                <p>Selecciona un apiario para operar</p>
+               
             </div>
 
-            <!-- Predicciones cargadas -->
-            <div *ngFor="let sugerencia of sugerenciasAutomaticas; let i = index" class="sugerencia-item">
-                <div class="sugerencia-indice">{{i + 1}}</div>
-                <div class="sugerencia-content">
-                    <div class="sugerencia-titulo">{{sugerencia.titulo}}</div>
-                    <div class="sugerencia-texto" [innerHTML]="formatearTextoParaHTML(sugerencia.descripcion)"></div>
+            <!-- Panel de control del dispositivo - ACTUALIZADO -->
+            <div *ngIf="!cargandoDispositivos && apiarioSeleccionado?.dispositivoId" class="control-panel">
+                <!-- Información del dispositivo -->
+                <div class="device-info">
+                    <div class="device-id">
+                        <strong>ID:</strong> {{ apiarioSeleccionado?.dispositivoId }}
+                    </div>
+                   
                 </div>
+
+                <!-- Controles de hardware - ACTUALIZADOS -->
+                <div class="hardware-controls">
+                    <!-- Control de Ventilador (Motor A) -->
+                    <div class="control-group">
+                        <label>🌀 Ventilador</label>
+                        <div class="control-buttons">
+                            <button class="btn-control" 
+                                    [class.active]="estadoVentilador"
+                                    (click)="controlarVentilador(true)">
+                                ENCENDER
+                            </button>
+                            <button class="btn-control" 
+                                    [class.active]="!estadoVentilador"
+                                    (click)="controlarVentilador(false)">
+                                APAGAR
+                            </button>
+                        </div>
+                    </div>
+
+                   
+                    <!-- Control de Luz -->
+                    <div class="control-group">
+                        <label>💡 Luz</label>
+                        <div class="control-buttons">
+                            <button class="btn-control" 
+                                    [class.active]="estadoLuz"
+                                    (click)="controlarLuz(true)">
+                                ENCENDER
+                            </button>
+                            <button class="btn-control" 
+                                    [class.active]="!estadoLuz"
+                                    (click)="controlarLuz(false)">
+                                APAGAR
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Control de Servos -->
+                    <div class="control-group">
+                        <label>🔧 Servo 1</label>
+                        <div class="servo-control">
+                            <input type="range" min="0" max="180" [(ngModel)]="servo1Grados" 
+                                   class="servo-slider" (change)="controlarServo1(servo1Grados)">
+                            <span class="servo-value">{{ servo1Grados }}°</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>🔧 Servo 2</label>
+                        <div class="servo-control">
+                            <input type="range" min="0" max="180" [(ngModel)]="servo2Grados" 
+                                   class="servo-slider" (change)="controlarServo2(servo2Grados)">
+                            <span class="servo-value">{{ servo2Grados }}°</span>
+                        </div>
+                    </div>
+
+                    
+
+                <!-- Estado de los sensores -->
+                <!-- Estado de los sensores -->
+<div class="sensors-status">
+    <h4>📊 Sensores</h4>
+    <div class="sensors-grid">
+        <div class="sensor-item" *ngFor="let sensor of obtenerSensores()">
+            <span class="sensor-name">{{ sensor.nombre }}</span>
+            <span class="sensor-value">{{ sensor.valor }} {{ sensor.unidad }}</span>
+        </div>
+    </div>
+</div>
             </div>
         </div>
     </div>
@@ -233,32 +305,22 @@
                     </select>
                 </div>
                 
-                <!-- 🔗 Nuevo campo para seleccionar dispositivo -->
-                <!-- En el modal de apiario, modifica el selector: -->
-<div class="form-group">
-  <label>📱 Dispositivos Asignados</label>
-  <select [(ngModel)]="dispositivoSeleccionado" name="dispositivoId" (change)="onDispositivoSeleccionado()">
-    <option value="">Sin dispositivo</option>
-    <option *ngFor="let dispositivo of dispositivosAsignadosList" 
-            [value]="dispositivo.dispositivoId">
-      {{ dispositivo.dispositivoId }} 
-      <span *ngIf="dispositivo.tipo">- {{ dispositivo.tipo }}</span>
-      <span *ngIf="dispositivo.sensores"> (Sensores: {{ dispositivo.sensores?.join(', ') }})</span>
-      <span class="text-asignado"> - ✅ Asignado a {{dispositivo.apiarioId}}</span>
-    </option>
-  </select>
-  <small class="text-hint" *ngIf="dispositivosDisponibles.length === 0">
-    No hay dispositivos detectados
-  </small>
-  <small class="text-hint" *ngIf="dispositivosDisponibles.length > 0">
-    {{ dispositivosAsignadosCount }} de {{ dispositivosTotalCount }} dispositivo(s) asignado(s)
-  </small>
-  
-  <!-- 🔥 NUEVO: Mostrar qué se enviará -->
-  <div *ngIf="apiarioIdDelDispositivo" class="info-envio">
-    <small>📤 Se enviará: <strong>{{ apiarioIdDelDispositivo }}</strong> (apiarioId del dispositivo)</small>
-  </div>
-</div>
+                <!-- Selector de dispositivos -->
+                <div class="form-group">
+                    <label>📱 Dispositivos Disponibles</label>
+                    <select [(ngModel)]="dispositivoSeleccionado" name="dispositivoId">
+                        <option value="">Sin dispositivo</option>
+                        <option *ngFor="let dispositivo of dispositivosDisponibles" 
+                                [value]="dispositivo.dispositivoId">
+                            {{ dispositivo.dispositivoId }} 
+                            <span *ngIf="dispositivo.tipo">- {{ dispositivo.tipo }}</span>
+                            <span *ngIf="dispositivo.sensores"> (Sensores: {{ dispositivo.sensores?.join(', ') }})</span>
+                        </option>
+                    </select>
+                    <small class="text-hint" *ngIf="dispositivosDisponibles.length === 0">
+                        No hay dispositivos detectados
+                    </small>
+                </div>
 
                 <div class="modal-actions">
                     <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalApiario()">Cancelar</button>
@@ -311,16 +373,6 @@
                         <small>Agrega medicamentos al sistema antes de crear recetas</small>
                     </div>
 
-                    <!-- Información de medicamentos disponibles -->
-                    <div *ngIf="!cargandoMedicamentos && medicamentosDisponibles.length > 0 && formReceta.medicamentos.length === 0" 
-                         class="medicamentos-disponibles-info">
-                        <div class="info-header">
-                            <span class="info-icon">ℹ️</span>
-                            <strong>Medicamentos disponibles: {{ medicamentosDisponibles.length }}</strong>
-                        </div>
-                        <small>Haz clic en "Agregar Medicamento" para comenzar a seleccionar</small>
-                    </div>
-                    
                     <!-- Lista de medicamentos agregados -->
                     <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0">
                         <div *ngFor="let medicamento of formReceta.medicamentos; let i = index" 
@@ -347,48 +399,11 @@
                                         {{ med.nombre }} - {{ med.descripcion }} (Stock: {{ med.cantidad }})
                                     </option>
                                 </select>
-                                
-                                <!-- Mostrar información del medicamento seleccionado -->
-                                <div *ngIf="medicamento.id > 0" class="medicamento-info">
-                                    <div class="medicamento-detalle">
-                                        <strong>✅ Seleccionado:</strong> {{ obtenerNombreMedicamento(medicamento.id) }}
-                                    </div>
-                                    <div class="medicamento-stock" *ngIf="obtenerStockMedicamento(medicamento.id) !== undefined">
-                                        <strong>📦 Stock disponible:</strong> {{ obtenerStockMedicamento(medicamento.id) }} unidades
-                                    </div>
-                                </div>
-
-                                <!-- Advertencia si el medicamento ya fue seleccionado -->
-                                <div *ngIf="medicamento.id > 0 && esMedicamentoDuplicado(medicamento.id, i)" 
-                                     class="medicamento-duplicado">
-                                    ⚠️ Este medicamento ya fue agregado a la receta
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Resumen de la receta -->
-                <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0" class="resumen-receta">
-                    <div class="resumen-header">
-                        <h4>📋 Resumen de la Receta</h4>
-                    </div>
-                    <div class="resumen-content">
-                        <div class="resumen-item">
-                            <span class="resumen-label">Total de medicamentos:</span>
-                            <span class="resumen-value">{{ contarMedicamentosSeleccionados() }} de {{ formReceta.medicamentos.length }}</span>
-                        </div>
-                        <div class="resumen-item" *ngIf="contarMedicamentosSeleccionados() > 0">
-                            <span class="resumen-label">Medicamentos seleccionados:</span>
-                            <span class="resumen-value">
-                                <span *ngFor="let med of obtenerMedicamentosSeleccionados(); let last = last">
-                                    {{ obtenerNombreMedicamento(med.id) }}{{ !last ? ', ' : '' }}
-                                </span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                
                 <div class="modal-actions">
                     <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalReceta()" [disabled]="cargando">
                         ❌ Cancelar
@@ -400,154 +415,99 @@
                         {{ cargando ? 'Guardando...' : 'Guardar Receta' }}
                     </button>
                 </div>
-
-                <!-- Validaciones -->
-                <div *ngIf="!cargandoMedicamentos && formReceta.medicamentos.length > 0" class="validaciones">
-                    <div *ngIf="tieneMedicamentosSinSeleccionar()" class="validacion-error">
-                        ⚠️ Todos los medicamentos deben estar seleccionados
-                    </div>
-                    <div *ngIf="tieneMedicamentosDuplicados()" class="validacion-error">
-                        ⚠️ Hay medicamentos duplicados en la receta
-                    </div>
-                    <div *ngIf="!tieneMedicamentosInvalidos()" class="validacion-success">
-                        ✅ Receta lista para guardar
-                    </div>
-                </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal de Sugerencias IA -->
-    <div class="modal-overlay" [class.active]="mostrarModalSugerencias">
-        <div class="modal modal-sugerencias">
+    <!-- Modal de Vinculación de Dispositivos -->
+    <div class="modal-overlay" [class.active]="mostrarModalVinculacion">
+        <div class="modal modal-vinculacion">
             <div class="modal-header">
-                <h3>💡 Asistente IA - Apiario #{{apiarioSeleccionado?.numeroApiario}}</h3>
-                <button class="btn-close" (click)="cerrarModalSugerencias()">×</button>
+                <h3>🔗 Vincular Dispositivo ESP32</h3>
+                <button class="btn-close" (click)="cerrarModalVinculacion()">×</button>
             </div>
 
             <div class="modal-content">
-                <!-- Resumen del Apiario -->
-                <div class="resumen-apiario">
-                    <div class="resumen-header">
-                        <h4>📊 Resumen del Apiario</h4>
-                    </div>
-                    <div class="resumen-datos">
-                        <div class="dato-resumen">
-                            <span class="dato-label">📍 Ubicación:</span>
-                            <span class="dato-valor">{{apiarioSeleccionado?.ubicacion}}</span>
-                        </div>
-                        <div class="dato-resumen">
-                            <span class="dato-label">❤️ Estado de Salud:</span>
-                            <span class="dato-valor" [class]="'salud-' + apiarioSeleccionado?.salud?.toLowerCase()">
-                                {{apiarioSeleccionado?.salud}}
-                            </span>
-                        </div>
-                        <div class="dato-resumen">
-                            <span class="dato-label">💊 Receta Activa:</span>
-                            <span class="dato-valor">
-                                {{apiarioSeleccionado?.receta ? 'Sí' : 'No'}}
-                            </span>
-                        </div>
-                        <div class="dato-resumen" *ngIf="apiarioSeleccionado?.receta">
-                            <span class="dato-label">📝 Descripción:</span>
-                            <span class="dato-valor">{{apiarioSeleccionado?.receta?.descripcion}}</span>
-                        </div>
-                        <!-- 🔗 Información del dispositivo en el resumen -->
-                        <div class="dato-resumen" *ngIf="apiarioSeleccionado?.dispositivoId">
-                            <span class="dato-label">📱 Dispositivo:</span>
-                            <span class="dato-valor">{{apiarioSeleccionado?.dispositivoId}}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ✅ ÚNICO DIV PARA SUGERENCIAS - CON ESTADO DE CARGA -->
-                <div class="sugerencias-automaticas">
-                    <div class="sugerencias-header">
-                        <h4>🎯 Recomendaciones de IA</h4>
-                        <span class="badge-ia">🤖</span>
-                    </div>
-                    
-                    <!-- Estado de carga -->
-                    <div *ngIf="cargandoRecomendaciones" class="cargando-sugerencias">
-                        <div class="spinner-ia">⏳</div>
-                        <p>Generando recomendaciones personalizadas...</p>
-                        <small>Analizando datos del apiario #{{apiarioSeleccionado?.numeroApiario}}</small>
-                    </div>
-
-                    <!-- Sugerencias generadas por IA -->
-                    <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length > 0" class="sugerencias-lista">
-                        <div class="sugerencia-auto-item" *ngFor="let sugerencia of sugerenciasAutomaticas; let i = index">
-                            <div class="sugerencia-icono">💡</div>
-                            <div class="sugerencia-contenido">
-                                <div class="sugerencia-descripcion">{{sugerencia.descripcion}}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Sin sugerencias disponibles -->
-                    <div *ngIf="!cargandoRecomendaciones && sugerenciasAutomaticas.length === 0" class="sin-sugerencias">
-                        <div class="sin-sugerencias-icono">🤖</div>
-                        <p>No hay recomendaciones disponibles en este momento</p>
-                        <small>Intenta recargar o consulta directamente en el chat</small>
-                        <button class="btn-reintentar" (click)="obtenerRecomendacionesIA()">
-                            🔄 Reintentar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Chat con IA -->
-                <div class="chat-ia">
-                    <div class="chat-header">
-                        <h4>💬 Consulta Específica</h4>
-                        <span class="badge-online" [class.badge-offline]="cargandoChat"> 
-                            {{ cargandoChat ? 'Procesando...' : 'En línea' }}
+                <!-- Estado de conexión MQTT -->
+                <div class="mqtt-status">
+                    <div class="status-header">
+                        <h4>📡 Estado MQTT</h4>
+                        <span class="status-badge" [class.connected]="estadoMqtt === 'Conectado'" 
+                              [class.disconnected]="estadoMqtt !== 'Conectado'">
+                            {{ estadoMqtt || 'Verificando...' }}
                         </span>
                     </div>
-                    
-                    <div class="chat-messages">
-                        <!-- Mensajes del chat -->
-                        <div *ngFor="let mensaje of mensajesChat" 
-                             class="message" 
-                             [class.user-message]="mensaje.tipo === 'usuario'" 
-                             [class.ia-message]="mensaje.tipo === 'ia'"
-                             [class.message-enviando]="mensaje.estado === 'enviando'"
-                             [class.message-error]="mensaje.estado === 'error'">
-                            
-                            <div class="message-avatar" *ngIf="mensaje.tipo === 'ia'">🤖</div>
-                            
-                            <div class="message-content">
-                                <div class="message-text">
-                                    {{ mensaje.texto }}
-                                    <!-- Indicador de escritura -->
-                                    <div *ngIf="mensaje.estado === 'enviando'" class="typing-indicator">
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                </div>
-                                <div class="message-time">{{ mensaje.tiempo }}</div>
-                            </div>
-                            
-                            <div class="message-avatar" *ngIf="mensaje.tipo === 'usuario'">👤</div>
-                        </div>
+                    <button class="btn btn-actualizar" (click)="actualizarEstadoMqtt()">
+                        🔄 Actualizar Estado
+                    </button>
+                </div>
+
+                <!-- Dispositivos detectados -->
+                <div class="dispositivos-section">
+                    <div class="section-header">
+                        <h4>📱 Dispositivos Detectados</h4>
+                        <button class="btn btn-actualizar" (click)="actualizarDispositivos()">
+                            🔄 Buscar Dispositivos
+                        </button>
                     </div>
 
-                    <div class="chat-input-container">
-                        <textarea 
-                            [(ngModel)]="nuevaPregunta" 
-                            placeholder="Escribe tu pregunta sobre el apiario..."
-                            class="chat-input"
-                            (keydown)="onChatKeydown($event)"
-                            [disabled]="cargandoChat"
-                            rows="1"
-                        ></textarea>
-                        <button class="btn-enviar" 
-                                (click)="enviarPregunta()" 
-                                [disabled]="!nuevaPregunta.trim() || cargandoChat">
-                            <span *ngIf="!cargandoChat"></span>
-                            <span *ngIf="cargandoChat" class="spinner-mini">⏳</span>
-                            {{ cargandoChat ? 'Enviando...' : 'Enviar' }}
-                        </button>
+                    <div *ngIf="cargandoDispositivos" class="loading-dispositivos">
+                        <div class="spinner">⏳</div>
+                        <p>Buscando dispositivos ESP32 en la red...</p>
+                    </div>
+
+                    <div *ngIf="!cargandoDispositivos && dispositivosDisponibles.length === 0" class="no-dispositivos">
+                        <div class="no-device-icon">🔍</div>
+                        <p>No se detectaron dispositivos ESP32</p>
+                        <small>Verifica que los dispositivos estén encendidos y conectados a la red</small>
+                    </div>
+
+                    <div *ngIf="!cargandoDispositivos && dispositivosDisponibles.length > 0" class="dispositivos-lista">
+                        <div *ngFor="let dispositivo of dispositivosDisponibles" 
+                             class="dispositivo-item"
+                             [class.seleccionado]="dispositivoVinculacion?.dispositivoId === dispositivo.dispositivoId"
+                             (click)="seleccionarDispositivoParaVincular(dispositivo)">
+                            <div class="dispositivo-header">
+                                <span class="dispositivo-id">{{ dispositivo.dispositivoId }}</span>
+                                <span class="dispositivo-estado" [class.online]="dispositivo.estado === 'online'">
+                                    {{ dispositivo.estado || 'desconocido' }}
+                                </span>
+                            </div>
+                            <div class="dispositivo-info">
+                                <div class="info-row">
+                                    <span class="info-label">Tipo:</span>
+                                    <span class="info-value">{{ dispositivo.tipo || 'No especificado' }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Última conexión:</span>
+                                    <span class="info-value">{{ dispositivo.ultimaConexion || 'No disponible' }}</span>
+                                </div>
+                                <div class="info-row" *ngIf="dispositivo.sensores">
+                                    <span class="info-label">Sensores:</span>
+                                    <span class="info-value">{{ dispositivo.sensores.join(', ') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirmación de vinculación -->
+                <div *ngIf="dispositivoVinculacion" class="vinculacion-confirm">
+                    <div class="confirm-header">
+                        <h4>✅ Confirmar Vinculación</h4>
+                    </div>
+                    <div class="confirm-content">
+                        <p>¿Vincular el dispositivo <strong>{{ dispositivoVinculacion.dispositivoId }}</strong> 
+                        al apiario <strong>#{{ apiarioSeleccionado?.numeroApiario }}</strong>?</p>
+                        
+                        <div class="confirm-actions">
+                            <button class="btn btn-cancelar" (click)="cancelarVinculacion()">
+                                ❌ Cancelar
+                            </button>
+                            <button class="btn btn-confirmar" (click)="confirmarVinculacion()">
+                                🔗 Vincular
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

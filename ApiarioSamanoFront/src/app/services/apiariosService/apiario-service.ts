@@ -110,8 +110,11 @@ export interface RecetaMedicamento {
 // 🔹 Interfaces para dispositivos
 export interface Dispositivo {
   dispositivoId: string;
-  nombre?: string;
+  apiarioId?: string;
   tipo?: string;
+  sensores?: string[];
+  actuadores?: string[];
+  timestamp?: string;
   estado?: string;
   ultimaConexion?: string;
   datos?: any;
@@ -119,6 +122,14 @@ export interface Dispositivo {
 
 export interface DispositivosMap {
   [dispositivoId: string]: Dispositivo;
+}
+
+// 📊 Interface para datos de sensores
+export interface DatosSensores {
+  temperatura?: string;
+  humedad_ambiente?: string;
+  humedad_suelo?: string;
+  peso?: string;
 }
 
 @Injectable({
@@ -263,13 +274,22 @@ export class ApiarioService {
   }
 
   // ===========================
-  // COMANDOS MQTT
+  // COMANDOS MQTT - ACTUALIZADOS
   // ===========================
 
-  // 🌀 Control del Ventilador
+  // 🌀 Control del Ventilador (Motor A)
   controlarVentilador(id: string, estado: boolean): Observable<string> {
     return this.http.post(
       `${this.apiUrl}/${id}/ventilador/${estado}`,
+      null,
+      { headers: this.getHeaders(), responseType: 'text' }
+    );
+  }
+
+  // 🚪 Control de la Compuerta (Motor B)
+  controlarCompuerta(id: string, estado: boolean): Observable<string> {
+    return this.http.post(
+      `${this.apiUrl}/${id}/compuerta/${estado}`,
       null,
       { headers: this.getHeaders(), responseType: 'text' }
     );
@@ -302,24 +322,6 @@ export class ApiarioService {
     );
   }
 
-  // ⚙️ Control del Motor DC - L298N
-  controlarMotorDC(id: string, estado: boolean): Observable<string> {
-    return this.http.post(
-      `${this.apiUrl}/${id}/motor/${estado}`,
-      null,
-      { headers: this.getHeaders(), responseType: 'text' }
-    );
-  }
-
-  // 🌈 Control del LED RGB
-  controlarLedRGB(id: string, r: number, g: number, b: number): Observable<string> {
-    return this.http.post(
-      `${this.apiUrl}/${id}/rgb/${r}/${g}/${b}`,
-      null,
-      { headers: this.getHeaders(), responseType: 'text' }
-    );
-  }
-
   // ===========================
   // DISPOSITIVOS MQTT
   // ===========================
@@ -340,6 +342,14 @@ export class ApiarioService {
     );
   }
 
+  // 📊 NUEVO: Obtener datos de sensores de un apiario
+  obtenerDatosSensores(apiarioId: string): Observable<DatosSensores> {
+    return this.http.get<DatosSensores>(
+      `${this.apiUrl}/${apiarioId}/sensores`,
+      { headers: this.getHeaders() }
+    );
+  }
+
   // 🔹 Métodos adicionales para Ollama (si los necesitas)
   consultarOllama(request: OllamaRequest): Observable<OllamaResponse> {
     const ollamaUrl = 'http://localhost:11434/api/generate';
@@ -356,5 +366,80 @@ export class ApiarioService {
       `${this.apiUrl}/medicamentos`,
       { headers: this.getHeaders() }
     );
+  }
+
+  // ===========================
+  // MÉTODOS DE CONVENIENCIA PARA CONTROL
+  // ===========================
+
+  // 🔄 Controlar todos los actuadores a la vez
+  controlarTodosActuadores(apiarioId: string, config: {
+    ventilador?: boolean;
+    compuerta?: boolean;
+    luz?: boolean;
+    servo1?: number;
+    servo2?: number;
+  }): Observable<string[]> {
+    const requests: Observable<string>[] = [];
+
+    if (config.ventilador !== undefined) {
+      requests.push(this.controlarVentilador(apiarioId, config.ventilador));
+    }
+    if (config.compuerta !== undefined) {
+      requests.push(this.controlarCompuerta(apiarioId, config.compuerta));
+    }
+    if (config.luz !== undefined) {
+      requests.push(this.controlarLuz(apiarioId, config.luz));
+    }
+    if (config.servo1 !== undefined) {
+      requests.push(this.controlarServo1(apiarioId, config.servo1));
+    }
+    if (config.servo2 !== undefined) {
+      requests.push(this.controlarServo2(apiarioId, config.servo2));
+    }
+
+    // Combinar todas las solicitudes
+    return new Observable(observer => {
+      const results: string[] = [];
+      let completed = 0;
+
+      if (requests.length === 0) {
+        observer.next([]);
+        observer.complete();
+        return;
+      }
+
+      requests.forEach(request => {
+        request.subscribe({
+          next: (result) => {
+            results.push(result);
+            completed++;
+            if (completed === requests.length) {
+              observer.next(results);
+              observer.complete();
+            }
+          },
+          error: (error) => {
+            results.push(`Error: ${error.message}`);
+            completed++;
+            if (completed === requests.length) {
+              observer.next(results);
+              observer.complete();
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // 🔄 Apagar todos los actuadores
+  apagarTodosActuadores(apiarioId: string): Observable<string[]> {
+    return this.controlarTodosActuadores(apiarioId, {
+      ventilador: false,
+      compuerta: false,
+      luz: false,
+      servo1: 0,
+      servo2: 0
+    });
   }
 }

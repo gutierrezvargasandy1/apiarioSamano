@@ -105,14 +105,21 @@ public class ApiariosController {
     }
 
     // ===========================
-    // COMANDOS MQTT
+    // COMANDOS MQTT - ACTUALIZADOS
     // ===========================
 
-    // 🌀 Ventilador
+    // 🌀 Ventilador (Motor A)
     @PostMapping("/{id}/ventilador/{estado}")
     public String ventilador(@PathVariable String id, @PathVariable boolean estado) {
         mqtt.enviarComandoVentilador(id, estado);
         return "Ventilador " + (estado ? "ENCENDIDO" : "APAGADO");
+    }
+
+    // 🚪 Compuerta (Motor B)
+    @PostMapping("/{id}/compuerta/{estado}")
+    public String compuerta(@PathVariable String id, @PathVariable boolean estado) {
+        mqtt.enviarComandoCompuerta(id, estado);
+        return "Compuerta " + (estado ? "ABIERTA" : "CERRADA");
     }
 
     // 💡 Luz
@@ -136,25 +143,6 @@ public class ApiariosController {
         return "Servo 2 movido a " + grados + " grados";
     }
 
-    // ⚙️ Motor DC - L298N
-    @PostMapping("/{id}/motor/{estado}")
-    public String motorDC(@PathVariable String id, @PathVariable boolean estado) {
-        mqtt.enviarMotorDC(id, estado);
-        return "Motor DC " + (estado ? "ENCENDIDO" : "APAGADO");
-    }
-
-    // 🌈 LED RGB
-    @PostMapping("/{id}/rgb/{r}/{g}/{b}")
-    public String rgb(
-            @PathVariable String id,
-            @PathVariable int r,
-            @PathVariable int g,
-            @PathVariable int b) {
-
-        mqtt.enviarRGB(id, r, g, b);
-        return "LED RGB cambiado a (" + r + "," + g + "," + b + ")";
-    }
-
     // 📡 Obtener dispositivos detectados
     @GetMapping("/dispositivos/detectados")
     public ResponseEntity<Map<String, Dispositivo>> obtenerDispositivosDetectados() {
@@ -169,5 +157,12 @@ public class ApiariosController {
             return ResponseEntity.ok(dispositivo);
         }
         return ResponseEntity.notFound().build();
+    }
+
+    // 📊 Obtener datos de sensores de un apiario
+    @GetMapping("/{apiarioId}/sensores")
+    public ResponseEntity<Map<String, String>> obtenerDatosSensores(@PathVariable String apiarioId) {
+        Map<String, String> datos = mqtt.getUltimosDatosSensores(apiarioId);
+        return ResponseEntity.ok(datos);
     }
 }
