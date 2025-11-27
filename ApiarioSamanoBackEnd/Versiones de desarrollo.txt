@@ -118,101 +118,171 @@ import network
 from umqtt.simple import MQTTClient
 import time
 import machine
-import dht
 import ujson
 
 # =====================
 # CONFIGURACIÓN GENERAL
 # =====================
-APIARIO_ID = "apiario_001"  
-DISPOSITIVO_ID = machine.unique_id()  # ID único del dispositivo
+APIARIO_ID = "apiario_001"
+DISPOSITIVO_ID = machine.unique_id()
 DISPOSITIVO_ID_HEX = "".join("{:02x}".format(b) for b in DISPOSITIVO_ID)
 
 ssid = "INFINITUMF116_EXT"
 password = "X4s9xzFrsx"
 mqtt_server = "192.168.1.101"
 
-# Topics ESPECÍFICOS
-TOPIC_REGISTRO = "apiarios/dispositivos/registro"  # Nuevo topic para registro
+# =====================
+# TOPICS MQTT
+# =====================
+TOPIC_REGISTRO = "apiarios/dispositivos/registro"
 TOPIC_STATUS = f"apiarios/{APIARIO_ID}/status"
-TOPIC_TEMPERATURA = f"apiarios/{APIARIO_ID}/temperatura" 
-TOPIC_HUMEDAD = f"apiarios/{APIARIO_ID}/humedad"
+TOPIC_HUMEDAD_SUELO = f"apiarios/{APIARIO_ID}/humedad_suelo"
+TOPIC_SENSOR_STATUS = f"apiarios/{APIARIO_ID}/sensor_status"
+
 TOPIC_SERVO1 = f"apiarios/{APIARIO_ID}/comandos/servo1"
 TOPIC_SERVO2 = f"apiarios/{APIARIO_ID}/comandos/servo2"
-TOPIC_MOTOR = f"apiarios/{APIARIO_ID}/comandos/motor"
-TOPIC_RGB = f"apiarios/{APIARIO_ID}/comandos/rgb"
+
+TOPIC_VENTILADOR = f"apiarios/{APIARIO_ID}/comandos/ventilador"   # Motor A
+TOPIC_COMPUERTA = f"apiarios/{APIARIO_ID}/comandos/compuerta"     # Motor B
+
+TOPIC_LUZ = f"apiarios/{APIARIO_ID}/comandos/luz"
 
 # =====================
 # HARDWARE
 # =====================
-# DHT22 en pin 14
-sensor = dht.DHT22(machine.Pin(14))
+
+# Sensor humedad con pull-down para evitar valores flotantes
+sensor_pin = machine.Pin(34)
+sensor_qc = machine.ADC(sensor_pin)
+sensor_qc.atten(machine.ADC.ATTN_11DB)
+sensor_qc.width(machine.ADC.WIDTH_12BIT)
 
 # Servos
 servo1 = machine.PWM(machine.Pin(15), freq=50)
 servo2 = machine.PWM(machine.Pin(27), freq=50)
 
-# Motor DC con L298N
-IN1 = machine.Pin(5, machine.Pin.OUT)
-IN2 = machine.Pin(18, machine.Pin.OUT)
+# Motores DC (H-Bridge)
+# Motor A → ventilador
+A_IN1 = machine.Pin(5, machine.Pin.OUT)
+A_IN2 = machine.Pin(18, machine.Pin.OUT)
 
-# LED RGB (anodo común o cátodo común)
+# Motor B → compuerta
+B_IN1 = machine.Pin(19, machine.Pin.OUT)
+B_IN2 = machine.Pin(25, machine.Pin.OUT)
+
+# LED RGB
 led_r = machine.Pin(21, machine.Pin.OUT)
 led_g = machine.Pin(22, machine.Pin.OUT)
 led_b = machine.Pin(23, machine.Pin.OUT)
 
 # =====================
-# FUNCIONES DE CONTROL
+# CALIBRACIÓN SENSOR
 # =====================
+# Valores calibrados - AJUSTA ESTOS VALORES SEGÚN TU SENSOR
+SENSOR_SECO = 2500    # Valor cuando el sensor está completamente seco (al aire)
+SENSOR_MOJADO = 1200  # Valor cuando el sensor está en agua
+SENSOR_DESCONECTADO = 4095  # Valor cuando el sensor está desconectado
+
+# =====================
+# FUNCIONES
+# =====================
+
 def mover_servo(pwm, grados):
     duty = int((grados / 180) * 102) + 26
     pwm.duty(duty)
-    print("Servo movido:", grados)
+    print("Servo movido a:", grados)
 
-def motor_on():
-    IN1.value(1)
-    IN2.value(0)
-    print("Motor ENCENDIDO")
+# ----- Motor A (Ventilador) -----
+def ventilador_on():
+    A_IN1.value(1)
+    A_IN2.value(0)
+    print("Ventilador ENCENDIDO")
 
-def motor_off():
-    IN1.value(0)
-    IN2.value(0)
-    print("Motor APAGADO")
+def ventilador_off():
+    A_IN1.value(0)
+    A_IN2.value(0)
+    print("Ventilador APAGADO")
 
-def set_rgb(r, g, b):
-    led_r.value(0 if r else 1)
-    led_g.value(0 if g else 1)
-    led_b.value(0 if b else 1)
-    print("RGB ->", r, g, b)
+# ----- Motor B (Compuerta) -----
+def compuerta_on():
+    B_IN1.value(1)
+    B_IN2.value(0)
+    print("Compuerta ABIERTA")
+
+def compuerta_off():
+    B_IN1.value(0)
+    B_IN2.value(0)
+    print("Compuerta CERRADA")
+
+# ----- Luz RGB -----
+def luz_on():
+    led_r.value(1)
+    led_g.value(0)
+    led_b.value(0)
+    print("Luz ENCENDIDA")
+
+def luz_off():
+    led_r.value(0)
+    led_g.value(0)
+    led_b.value(0)
+    print("Luz APAGADA")
+
+def leer_humedad_corregida():
+    """Lee el sensor y detecta si está desconectado"""
+    # Leer múltiples muestras para promediar
+    muestras = []
+    for _ in range(10):
+        raw = sensor_qc.read()
+        muestras.append(raw)
+        time.sleep(0.01)
+    
+    raw_promedio = sum(muestras) / len(muestras)
+    
+    # Detectar si el sensor está desconectado
+    if raw_promedio >= SENSOR_DESCONECTADO - 100:  # Margen de error
+        return -1, raw_promedio  # -1 indica sensor desconectado
+    
+    # Calcular humedad con calibración
+    if raw_promedio >= SENSOR_SECO:
+        humedad = 0
+    elif raw_promedio <= SENSOR_MOJADO:
+        humedad = 100
+    else:
+        # Fórmula lineal entre seco y mojado
+        humedad = int((SENSOR_SECO - raw_promedio) * 100 / (SENSOR_SECO - SENSOR_MOJADO))
+        humedad = max(0, min(100, humedad))
+    
+    return humedad, raw_promedio
 
 # =====================
 # MQTT CALLBACK
 # =====================
 def on_message(topic, msg):
-    print("Comando recibido:", topic.decode(), msg.decode())
-    
     t = topic.decode()
-    m = msg.decode()
-    
+    m = msg.decode().upper()
+    print("Comando recibido:", t, m)
+
+    # Servos
     if t == TOPIC_SERVO1:
         mover_servo(servo1, int(m))
     elif t == TOPIC_SERVO2:
         mover_servo(servo2, int(m))
-    elif t == TOPIC_MOTOR:
-        if m.upper() == "ON":
-            motor_on()
-        else:
-            motor_off()
-    elif t == TOPIC_RGB:
-        try:
-            r, g, b = m.split(",")
-            set_rgb(int(r), int(g), int(b))
-        except:
-            print("RGB inválido (use: 1,0,1)")
+
+    # Motores DC
+    elif t == TOPIC_VENTILADOR:
+        ventilador_on() if m == "ON" else ventilador_off()
+
+    elif t == TOPIC_COMPUERTA:
+        compuerta_on() if m == "ON" else compuerta_off()
+
+    # Luz RGB
+    elif t == TOPIC_LUZ:
+        luz_on() if m == "ON" else luz_off()
 
 # =====================
-# CONEXIONES
+# CONEXIÓN
 # =====================
+
 def connect_wifi():
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -226,36 +296,31 @@ def connect_mqtt():
     client = MQTTClient(DISPOSITIVO_ID_HEX, mqtt_server)
     client.set_callback(on_message)
     client.connect()
-    print("Conectado a MQTT")
-    
-    # Suscribir a topics
+
     client.subscribe(TOPIC_SERVO1)
     client.subscribe(TOPIC_SERVO2)
-    client.subscribe(TOPIC_MOTOR)
-    client.subscribe(TOPIC_RGB)
-    print("Suscrito a topics de actuadores")
-    
+    client.subscribe(TOPIC_VENTILADOR)
+    client.subscribe(TOPIC_COMPUERTA)
+    client.subscribe(TOPIC_LUZ)
+
+    print("Suscrito a comandos MQTT")
     return client
 
 def enviar_registro(client):
-    """Envía información de registro del dispositivo"""
     registro = {
         "dispositivoId": DISPOSITIVO_ID_HEX,
         "apiarioId": APIARIO_ID,
-        "tipo": "ESP32_DHT22",
-        "sensores": ["temperatura", "humedad"],
-        "actuadores": ["servo1", "servo2", "motor_dc", "led_rgb"],
+        "tipo": "ESP32_QC_SENSOR",
+        "sensores": ["humedad_suelo"],
+        "actuadores": ["servo1", "servo2", "ventilador", "compuerta", "luz"],
         "timestamp": time.time()
     }
-    
+
     try:
-        mensaje = ujson.dumps(registro)
-        client.publish(TOPIC_REGISTRO, mensaje, retain=True)
-        print("✅ Registro enviado:", mensaje)
-        return True
+        client.publish(TOPIC_REGISTRO, ujson.dumps(registro), retain=True)
+        print("Registro enviado")
     except Exception as e:
-        print("❌ Error al enviar registro:", e)
-        return False
+        print("Error al registrar:", e)
 
 # =====================
 # LOOP PRINCIPAL
@@ -263,40 +328,36 @@ def enviar_registro(client):
 try:
     print("=" * 40)
     print("🐝 SISTEMA APIARIO INTELIGENTE")
-    print("Dispositivo ID:", DISPOSITIVO_ID_HEX)
-    print("Apiario ID:", APIARIO_ID)
+    print("ID:", DISPOSITIVO_ID_HEX)
     print("=" * 40)
-    
+
     connect_wifi()
     client = connect_mqtt()
-    
-    # ENVIAR REGISTRO AL INICIAR
-    print("📡 Enviando registro al servidor...")
+
     enviar_registro(client)
-    time.sleep(2)  # Esperar confirmación
-    
-    # Publicar estado online
+
+    time.sleep(2)
     client.publish(TOPIC_STATUS, "online")
-    
-    print("🟢 Sistema iniciado - Loop principal")
-    
+
     while True:
-        try:
-            sensor.measure()
-            temp = sensor.temperature()
-            hum = sensor.humidity()
-            
-            client.publish(TOPIC_TEMPERATURA, str(temp))
-            client.publish(TOPIC_HUMEDAD, str(hum))
-            print("📊 Temp:", temp, "°C | Hum:", hum, "%")
-            
-        except Exception as e:
-            print("⚠️ Error sensor:", e)
+        # Leer sensor con detección de desconexión
+        humedad, raw_promedio = leer_humedad_corregida()
         
+        if humedad == -1:
+            # Sensor desconectado
+            print(f"❌ SENSOR DESCONECTADO - Valor RAW: {raw_promedio}")
+            client.publish(TOPIC_HUMEDAD_SUELO, "SENSOR_DESCONECTADO")
+            client.publish(TOPIC_SENSOR_STATUS, "desconectado")
+        else:
+            # Sensor funcionando
+            print(f"✅ Valor RAW: {raw_promedio}, Humedad del suelo: {humedad}%")
+            client.publish(TOPIC_HUMEDAD_SUELO, str(humedad))
+            client.publish(TOPIC_SENSOR_STATUS, "conectado")
+
         client.check_msg()
         time.sleep(5)
-        
+
 except Exception as e:
-    print("❌ ERROR FATAL:", e)
-    time.sleep(10)
+    print("ERROR FATAL:", e)
+    time.sleep(5)
     machine.reset()
