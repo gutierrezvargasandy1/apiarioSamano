@@ -624,66 +624,72 @@ obtenerSensores(): any[] {
     console.log('Obteniendo estado actual del dispositivo...');
   }
 
+getEstadoCompuerta(grados: number): string {
+    if (grados <= 100) {
+        return 'Abierto';  // 75°-100° = Abierto
+    } else if (grados > 100 && grados <= 140) {
+        return 'Parcial';  // 101°-140° = Parcial
+    } else {
+        return 'Cerrado';  // 141°-180° = Cerrado
+    }
+}
+
   // ==================== CARGA DE DISPOSITIVOS ====================
 
   // Método para cargar dispositivos - MOSTRAR ASIGNADOS
-  cargarDispositivosDisponibles(): void {
+ cargarDispositivosDisponibles(): void {
     this.apiarioService.obtenerDispositivosDetectados().subscribe({
-      next: (dispositivosMap) => {
-        console.log('📡 Dispositivos detectados (RAW):', dispositivosMap);
-        
-        // Convertir el mapa a array
-        const todosDispositivos = Object.values(dispositivosMap);
-        console.log('📡 Todos los dispositivos:', todosDispositivos);
-        
-        // 🔥 FILTRO CORREGIDO: Mostrar dispositivos CON apiarioId (ASIGNADOS)
-        this.dispositivosDisponibles = todosDispositivos.filter(
-          (dispositivo: any) => dispositivo.apiarioId && dispositivo.apiarioId !== ''
-        );
-        
-        console.log('📡 Dispositivos ASIGNADOS:', this.dispositivosDisponibles);
-        this.cdRef.detectChanges();
-      },
-      error: (error) => {
-        console.error('❌ Error al cargar dispositivos:', error);
-        this.dispositivosDisponibles = [];
-        this.cdRef.detectChanges();
-      }
+        next: (dispositivosMap) => {
+            console.log('📡 Dispositivos detectados (RAW):', dispositivosMap);
+            
+            // Convertir el mapa a array
+            const todosDispositivos = Object.values(dispositivosMap);
+            console.log('📡 Todos los dispositivos:', todosDispositivos);
+            
+            // ✅ CORRECCIÓN: Mostrar dispositivos SIN apiarioId (DISPONIBLES para asignar)
+            this.dispositivosDisponibles = todosDispositivos.filter(
+                (dispositivo: any) => !dispositivo.apiarioId || dispositivo.apiarioId === ''
+            );
+            
+            console.log('📡 Dispositivos DISPONIBLES (sin asignar):', this.dispositivosDisponibles);
+            this.cdRef.detectChanges();
+        },
+        error: (error) => {
+            console.error('❌ Error al cargar dispositivos:', error);
+            this.dispositivosDisponibles = [];
+            this.cdRef.detectChanges();
+        }
     });
-  }
+}
 
   // 🔥 NUEVO: Método que se ejecuta cuando seleccionas un dispositivo
   onDispositivoSeleccionado(): void {
     if (this.dispositivoSeleccionado) {
-      // Buscar el dispositivo seleccionado en la lista
-      this.dispositivoSeleccionadoObj = this.dispositivosDisponibles.find(
-        d => d.dispositivoId === this.dispositivoSeleccionado
-      );
-      
-      if (this.dispositivoSeleccionadoObj) {
-        // ✅ CAMBIO PRINCIPAL: Usar apiarioId en lugar de dispositivoId
-        this.apiarioIdDelDispositivo = this.dispositivoSeleccionadoObj.apiarioId;
+        // Buscar el dispositivo seleccionado en la lista
+        this.dispositivoSeleccionadoObj = this.dispositivosDisponibles.find(
+            d => d.dispositivoId === this.dispositivoSeleccionado
+        );
         
-        console.log('🔗 Dispositivo seleccionado:', {
-          dispositivoId: this.dispositivoSeleccionadoObj.dispositivoId,
-          apiarioId: this.dispositivoSeleccionadoObj.apiarioId, // Este es el que queremos enviar
-          tipo: this.dispositivoSeleccionadoObj.tipo
-        });
-        
-        // 🔥 IMPORTANTE: Actualizar el formulario con el apiarioId
-        this.formApiario.dispositivoId = this.apiarioIdDelDispositivo;
-        
-        console.log('🎯 Apiario ID que se enviará:', this.apiarioIdDelDispositivo);
-        
-        this.mostrarInfoDispositivo(this.dispositivoSeleccionadoObj);
-      }
+        if (this.dispositivoSeleccionadoObj) {
+            // ✅ CORRECCIÓN: Usar dispositivoId, NO apiarioId
+            this.formApiario.dispositivoId = this.dispositivoSeleccionadoObj.dispositivoId;
+            
+            console.log('🔗 Dispositivo seleccionado:', {
+                dispositivoId: this.dispositivoSeleccionadoObj.dispositivoId, // Este es el que queremos enviar
+                apiarioId: this.dispositivoSeleccionadoObj.apiarioId, // Este es solo informativo
+                tipo: this.dispositivoSeleccionadoObj.tipo
+            });
+            
+            console.log('🎯 Dispositivo ID que se enviará:', this.formApiario.dispositivoId);
+            
+            this.mostrarInfoDispositivo(this.dispositivoSeleccionadoObj);
+        }
     } else {
-      this.apiarioIdDelDispositivo = '';
-      this.dispositivoSeleccionadoObj = null;
-      this.formApiario.dispositivoId = ''; // Limpiar cuando no hay selección
+        this.dispositivoSeleccionadoObj = null;
+        this.formApiario.dispositivoId = ''; // Limpiar cuando no hay selección
     }
     this.cdRef.detectChanges();
-  }
+}
 
   // Método para mostrar información del dispositivo seleccionado
   mostrarInfoDispositivo(dispositivo: any): void {
@@ -809,113 +815,102 @@ obtenerSensores(): any[] {
     this.cdRef.detectChanges();
   }
 
-  cerrarModalApiario(): void {
+ cerrarModalApiario(): void {
     this.mostrarModalApiario = false;
     this.apiarioEditando = null;
     this.formApiario = {
-      numeroApiario: 0,
-      ubicacion: '',
-      salud: '',
-      dispositivoId: ''
+        numeroApiario: 0,
+        ubicacion: '',
+        salud: '',
+        dispositivoId: ''
     };
     this.dispositivoSeleccionado = '';
-    this.apiarioIdDelDispositivo = '';
     this.dispositivoSeleccionadoObj = null;
     this.dispositivosDisponibles = [];
     
-    // ✅ DETECCIÓN ESTRATÉGICA: Solo una vez después de cerrar el modal
     this.cdRef.detectChanges();
-  }
+}
+
 
   guardarApiario(): void {
     if (!this.formApiario.ubicacion || !this.formApiario.salud || !this.formApiario.numeroApiario) {
-      this.toastService.warning('Atención', 'Por favor complete todos los campos');
-      return;
+        this.toastService.warning('Atención', 'Por favor complete todos los campos');
+        return;
     }
 
     // Validar número de apiario único
     const numeroExistente = this.apiarios.find(a => 
-      a.numeroApiario === this.formApiario.numeroApiario && 
-      a.id !== this.apiarioEditando?.id
+        a.numeroApiario === this.formApiario.numeroApiario && 
+        a.id !== this.apiarioEditando?.id
     );
     
     if (numeroExistente) {
-      this.toastService.warning('Atención', `El número de apiario ${this.formApiario.numeroApiario} ya existe`);
-      return;
+        this.toastService.warning('Atención', `El número de apiario ${this.formApiario.numeroApiario} ya existe`);
+        return;
     }
 
-    // 🔥 MODIFICADO: Preparar los datos con el apiarioId del dispositivo
+    // ✅ CORRECCIÓN: Enviar dispositivoId directamente
     const request: ApiarioRequest = {
-      numeroApiario: this.formApiario.numeroApiario,
-      ubicacion: this.formApiario.ubicacion,
-      salud: this.formApiario.salud,
-      // ✅ ENVIAR apiarioIdDelDispositivo en lugar de dispositivoSeleccionado
-      dispositivoId: this.apiarioIdDelDispositivo || undefined
+        numeroApiario: this.formApiario.numeroApiario,
+        ubicacion: this.formApiario.ubicacion,
+        salud: this.formApiario.salud,
+        dispositivoId: this.formApiario.dispositivoId || undefined // Enviar el dispositivoId del formulario
     };
 
-    // 🔥 NUEVO: CONSOLE.LOG DETALLADO PARA DEBUG
-    console.log('🚀 ========== DATOS ENVIADOS AL BACKEND ==========');
-    console.log('📤 REQUEST COMPLETO:', JSON.stringify(request, null, 2));
-    console.log('🔍 DETALLE DE CAMPOS:');
+    // Debug simplificado
+    console.log('🚀 DATOS ENVIADOS AL BACKEND:');
     console.log('   - numeroApiario:', request.numeroApiario);
     console.log('   - ubicacion:', request.ubicacion);
     console.log('   - salud:', request.salud);
-    console.log('   - dispositivoId (apiarioId):', request.dispositivoId, '<-- ESTE es el apiarioId del dispositivo');
-    console.log('📝 Formulario completo:', this.formApiario);
-    console.log('🎯 Dispositivo seleccionado (dispositivoId):', this.dispositivoSeleccionado);
-    console.log('🔗 Apiario ID del dispositivo (apiarioId):', this.apiarioIdDelDispositivo, '<-- ESTE se envía');
-    console.log('✏️ Editando apiario?:', this.apiarioEditando ? `Sí (ID: ${this.apiarioEditando.id})` : 'No (Creando nuevo)');
-    console.log('🚀 ==============================================');
+    console.log('   - dispositivoId:', request.dispositivoId);
 
     this.cargando = true;
     this.cdRef.detectChanges();
 
     if (this.apiarioEditando) {
-      // Actualizar apiario existente
-      console.log('🔄 Actualizando apiario existente...');
-      this.apiarioService.modificarApiario(this.apiarioEditando.id, request).subscribe({
-        next: (response: any) => {
-          this.cargando = false;
-          if (response.codigo === 200) {
-            this.toastService.success('Éxito', 'Apiario actualizado correctamente');
-            this.cargarApiarios();
-            this.cerrarModalApiario();
-          } else {
-            this.toastService.error('Error', response.descripcion || 'Error al actualizar apiario');
-          }
-          this.cdRef.detectChanges();
-        },
-        error: (err: any) => {
-          this.cargando = false;
-          console.error('❌ Error al actualizar apiario:', err);
-          this.toastService.error('Error', 'No se pudo actualizar el apiario');
-          this.cdRef.detectChanges();
-        }
-      });
+        // Actualizar apiario existente
+        this.apiarioService.modificarApiario(this.apiarioEditando.id, request).subscribe({
+            next: (response: any) => {
+                this.cargando = false;
+                if (response.codigo === 200) {
+                    this.toastService.success('Éxito', 'Apiario actualizado correctamente');
+                    this.cargarApiarios();
+                    this.cerrarModalApiario();
+                } else {
+                    this.toastService.error('Error', response.descripcion || 'Error al actualizar apiario');
+                }
+                this.cdRef.detectChanges();
+            },
+            error: (err: any) => {
+                this.cargando = false;
+                console.error('❌ Error al actualizar apiario:', err);
+                this.toastService.error('Error', 'No se pudo actualizar el apiario');
+                this.cdRef.detectChanges();
+            }
+        });
     } else {
-      // Crear nuevo apiario
-      console.log('🆕 Creando nuevo apiario...');
-      this.apiarioService.crearApiario(request).subscribe({
-        next: (response: any) => {
-          this.cargando = false;
-          if (response.codigo === 200) {
-            this.toastService.success('Éxito', 'Apiario creado correctamente');
-            this.cargarApiarios();
-            this.cerrarModalApiario();
-          } else {
-            this.toastService.error('Error', response.descripcion || 'Error al crear apiario');
-          }
-          this.cdRef.detectChanges();
-        },
-        error: (err: any) => {
-          this.cargando = false;
-          console.error('❌ Error al crear apiario:', err);
-          this.toastService.error('Error', 'No se pudo crear el apiario');
-          this.cdRef.detectChanges();
-        }
-      });
+        // Crear nuevo apiario
+        this.apiarioService.crearApiario(request).subscribe({
+            next: (response: any) => {
+                this.cargando = false;
+                if (response.codigo === 200) {
+                    this.toastService.success('Éxito', 'Apiario creado correctamente');
+                    this.cargarApiarios();
+                    this.cerrarModalReceta();
+                } else {
+                    this.toastService.error('Error', response.descripcion || 'Error al crear apiario');
+                }
+                this.cdRef.detectChanges();
+            },
+            error: (err: any) => {
+                this.cargando = false;
+                console.error('❌ Error al crear apiario:', err);
+                this.toastService.error('Error', 'No se pudo crear el apiario');
+                this.cdRef.detectChanges();
+            }
+        });
     }
-  }
+}
 
   editarApiario(apiario: Apiario, event: Event): void {
     event.stopPropagation();

@@ -123,7 +123,6 @@ import ujson
 # =====================
 # CONFIGURACIÓN GENERAL
 # =====================
-APIARIO_ID = "apiario_001"
 DISPOSITIVO_ID = machine.unique_id()
 DISPOSITIVO_ID_HEX = "".join("{:02x}".format(b) for b in DISPOSITIVO_ID)
 
@@ -132,20 +131,20 @@ password = "X4s9xzFrsx"
 mqtt_server = "192.168.1.101"
 
 # =====================
-# TOPICS MQTT
+# TOPICS MQTT - SOLO CON DISPOSITIVO ID
 # =====================
 TOPIC_REGISTRO = "apiarios/dispositivos/registro"
-TOPIC_STATUS = f"apiarios/{APIARIO_ID}/status"
-TOPIC_HUMEDAD_SUELO = f"apiarios/{APIARIO_ID}/humedad_suelo"
-TOPIC_SENSOR_STATUS = f"apiarios/{APIARIO_ID}/sensor_status"
+TOPIC_STATUS = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/status"
+TOPIC_HUMEDAD_SUELO = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/humedad_suelo"
+TOPIC_SENSOR_STATUS = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/sensor_status"
 
-TOPIC_SERVO1 = f"apiarios/{APIARIO_ID}/comandos/servo1"
-TOPIC_SERVO2 = f"apiarios/{APIARIO_ID}/comandos/servo2"
+TOPIC_SERVO1 = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/comandos/servo1"
+TOPIC_SERVO2 = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/comandos/servo2"
 
-TOPIC_VENTILADOR = f"apiarios/{APIARIO_ID}/comandos/ventilador"   # Motor A
-TOPIC_COMPUERTA = f"apiarios/{APIARIO_ID}/comandos/compuerta"     # Motor B
+TOPIC_VENTILADOR = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/comandos/ventilador"   # Motor A
+TOPIC_COMPUERTA = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/comandos/compuerta"     # Motor B
 
-TOPIC_LUZ = f"apiarios/{APIARIO_ID}/comandos/luz"
+TOPIC_LUZ = f"apiarios/dispositivos/{DISPOSITIVO_ID_HEX}/comandos/luz"
 
 # =====================
 # HARDWARE
@@ -297,6 +296,7 @@ def connect_mqtt():
     client.set_callback(on_message)
     client.connect()
 
+    # Suscribirse a todos los topics de comandos
     client.subscribe(TOPIC_SERVO1)
     client.subscribe(TOPIC_SERVO2)
     client.subscribe(TOPIC_VENTILADOR)
@@ -304,12 +304,17 @@ def connect_mqtt():
     client.subscribe(TOPIC_LUZ)
 
     print("Suscrito a comandos MQTT")
+    print("Topics suscritos:")
+    print(f"  - {TOPIC_SERVO1}")
+    print(f"  - {TOPIC_SERVO2}")
+    print(f"  - {TOPIC_VENTILADOR}")
+    print(f"  - {TOPIC_COMPUERTA}")
+    print(f"  - {TOPIC_LUZ}")
     return client
 
 def enviar_registro(client):
     registro = {
         "dispositivoId": DISPOSITIVO_ID_HEX,
-        "apiarioId": APIARIO_ID,
         "tipo": "ESP32_QC_SENSOR",
         "sensores": ["humedad_suelo"],
         "actuadores": ["servo1", "servo2", "ventilador", "compuerta", "luz"],
@@ -318,7 +323,7 @@ def enviar_registro(client):
 
     try:
         client.publish(TOPIC_REGISTRO, ujson.dumps(registro), retain=True)
-        print("Registro enviado")
+        print("Registro enviado:", registro)
     except Exception as e:
         print("Error al registrar:", e)
 
@@ -326,10 +331,10 @@ def enviar_registro(client):
 # LOOP PRINCIPAL
 # =====================
 try:
-    print("=" * 40)
+    print("=" * 50)
     print("🐝 SISTEMA APIARIO INTELIGENTE")
-    print("ID:", DISPOSITIVO_ID_HEX)
-    print("=" * 40)
+    print(f"ID del Dispositivo: {DISPOSITIVO_ID_HEX}")
+    print("=" * 50)
 
     connect_wifi()
     client = connect_mqtt()
@@ -338,6 +343,7 @@ try:
 
     time.sleep(2)
     client.publish(TOPIC_STATUS, "online")
+    print(f"Status publicado en: {TOPIC_STATUS}")
 
     while True:
         # Leer sensor con detección de desconexión

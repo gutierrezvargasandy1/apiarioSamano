@@ -233,8 +233,8 @@ export class ApiarioService {
   // 🔗 Vincular dispositivo a apiario
   vincularDispositivo(idApiario: number, dispositivoId: string): Observable<CodigoResponse<Apiarios>> {
     return this.http.post<CodigoResponse<Apiarios>>(
-      `${this.apiUrl}/${idApiario}/vincular-dispositivo`,
-      { dispositivoId },
+      `${this.apiUrl}/${idApiario}/dispositivos/${dispositivoId}`,
+      null,
       { headers: this.getHeaders() }
     );
   }
@@ -242,7 +242,7 @@ export class ApiarioService {
   // 🔗 Desvincular dispositivo de apiario
   desvincularDispositivo(idApiario: number): Observable<CodigoResponse<Apiarios>> {
     return this.http.delete<CodigoResponse<Apiarios>>(
-      `${this.apiUrl}/${idApiario}/desvincular-dispositivo`,
+      `${this.apiUrl}/${idApiario}/dispositivos`,
       { headers: this.getHeaders() }
     );
   }
@@ -274,49 +274,49 @@ export class ApiarioService {
   }
 
   // ===========================
-  // COMANDOS MQTT - ACTUALIZADOS
+  // COMANDOS MQTT - ACTUALIZADOS PARA DISPOSITIVOS
   // ===========================
 
   // 🌀 Control del Ventilador (Motor A)
-  controlarVentilador(id: string, estado: boolean): Observable<string> {
+  controlarVentilador(dispositivoId: string, estado: boolean): Observable<string> {
     return this.http.post(
-      `${this.apiUrl}/${id}/ventilador/${estado}`,
+      `${this.apiUrl}/comandos/${dispositivoId}/ventilador/${estado}`,
       null,
       { headers: this.getHeaders(), responseType: 'text' }
     );
   }
 
   // 🚪 Control de la Compuerta (Motor B)
-  controlarCompuerta(id: string, estado: boolean): Observable<string> {
+  controlarCompuerta(dispositivoId: string, estado: boolean): Observable<string> {
     return this.http.post(
-      `${this.apiUrl}/${id}/compuerta/${estado}`,
+      `${this.apiUrl}/comandos/${dispositivoId}/compuerta/${estado}`,
       null,
       { headers: this.getHeaders(), responseType: 'text' }
     );
   }
 
   // 💡 Control de la Luz
-  controlarLuz(id: string, estado: boolean): Observable<string> {
+  controlarLuz(dispositivoId: string, estado: boolean): Observable<string> {
     return this.http.post(
-      `${this.apiUrl}/${id}/luz/${estado}`,
+      `${this.apiUrl}/comandos/${dispositivoId}/luz/${estado}`,
       null,
       { headers: this.getHeaders(), responseType: 'text' }
     );
   }
 
   // 🔧 Control del Servo 1
-  controlarServo1(id: string, grados: number): Observable<string> {
+  controlarServo1(dispositivoId: string, grados: number): Observable<string> {
     return this.http.post(
-      `${this.apiUrl}/${id}/servo1/${grados}`,
+      `${this.apiUrl}/comandos/${dispositivoId}/servo1/${grados}`,
       null,
       { headers: this.getHeaders(), responseType: 'text' }
     );
   }
 
   // 🔧 Control del Servo 2
-  controlarServo2(id: string, grados: number): Observable<string> {
+  controlarServo2(dispositivoId: string, grados: number): Observable<string> {
     return this.http.post(
-      `${this.apiUrl}/${id}/servo2/${grados}`,
+      `${this.apiUrl}/comandos/${dispositivoId}/servo2/${grados}`,
       null,
       { headers: this.getHeaders(), responseType: 'text' }
     );
@@ -342,10 +342,10 @@ export class ApiarioService {
     );
   }
 
-  // 📊 NUEVO: Obtener datos de sensores de un apiario
-  obtenerDatosSensores(apiarioId: string): Observable<DatosSensores> {
+  // 📊 Obtener datos de sensores de un DISPOSITIVO
+  obtenerDatosSensores(dispositivoId: string): Observable<DatosSensores> {
     return this.http.get<DatosSensores>(
-      `${this.apiUrl}/${apiarioId}/sensores`,
+      `${this.apiUrl}/dispositivos/${dispositivoId}/sensores`,
       { headers: this.getHeaders() }
     );
   }
@@ -373,7 +373,7 @@ export class ApiarioService {
   // ===========================
 
   // 🔄 Controlar todos los actuadores a la vez
-  controlarTodosActuadores(apiarioId: string, config: {
+  controlarTodosActuadores(dispositivoId: string, config: {
     ventilador?: boolean;
     compuerta?: boolean;
     luz?: boolean;
@@ -383,19 +383,19 @@ export class ApiarioService {
     const requests: Observable<string>[] = [];
 
     if (config.ventilador !== undefined) {
-      requests.push(this.controlarVentilador(apiarioId, config.ventilador));
+      requests.push(this.controlarVentilador(dispositivoId, config.ventilador));
     }
     if (config.compuerta !== undefined) {
-      requests.push(this.controlarCompuerta(apiarioId, config.compuerta));
+      requests.push(this.controlarCompuerta(dispositivoId, config.compuerta));
     }
     if (config.luz !== undefined) {
-      requests.push(this.controlarLuz(apiarioId, config.luz));
+      requests.push(this.controlarLuz(dispositivoId, config.luz));
     }
     if (config.servo1 !== undefined) {
-      requests.push(this.controlarServo1(apiarioId, config.servo1));
+      requests.push(this.controlarServo1(dispositivoId, config.servo1));
     }
     if (config.servo2 !== undefined) {
-      requests.push(this.controlarServo2(apiarioId, config.servo2));
+      requests.push(this.controlarServo2(dispositivoId, config.servo2));
     }
 
     // Combinar todas las solicitudes
@@ -433,8 +433,8 @@ export class ApiarioService {
   }
 
   // 🔄 Apagar todos los actuadores
-  apagarTodosActuadores(apiarioId: string): Observable<string[]> {
-    return this.controlarTodosActuadores(apiarioId, {
+  apagarTodosActuadores(dispositivoId: string): Observable<string[]> {
+    return this.controlarTodosActuadores(dispositivoId, {
       ventilador: false,
       compuerta: false,
       luz: false,

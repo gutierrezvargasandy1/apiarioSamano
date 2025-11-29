@@ -242,14 +242,19 @@
                     </div>
 
                     <!-- Control de Servos -->
-                    <div class="control-group">
-                        <label>🔧 Servo 1</label>
-                        <div class="servo-control">
-                            <input type="range" min="0" max="180" [(ngModel)]="servo1Grados" 
-                                   class="servo-slider" (change)="controlarServo1(servo1Grados)">
-                            <span class="servo-value">{{ servo1Grados }}°</span>
-                        </div>
-                    </div>
+<!-- Control de Servos -->
+<div class="control-group">
+    <label>Compuerta</label>
+    <div class="labels-container">
+        <span>Abierto</span>
+        <span>Cerrado</span>
+    </div>
+    <div class="servo-control">
+        <input type="range" min="75" max="180" [(ngModel)]="servo1Grados" 
+               class="servo-slider" (change)="controlarServo1(servo1Grados)">
+        <span class="servo-value">{{ getEstadoCompuerta(servo1Grados) }}</span>
+    </div>
+</div>
 
                     <div class="control-group">
                         <label>🔧 Servo 2</label>
@@ -306,21 +311,21 @@
                 </div>
                 
                 <!-- Selector de dispositivos -->
-                <div class="form-group">
-                    <label>📱 Dispositivos Disponibles</label>
-                    <select [(ngModel)]="dispositivoSeleccionado" name="dispositivoId">
-                        <option value="">Sin dispositivo</option>
-                        <option *ngFor="let dispositivo of dispositivosDisponibles" 
-                                [value]="dispositivo.dispositivoId">
-                            {{ dispositivo.dispositivoId }} 
-                            <span *ngIf="dispositivo.tipo">- {{ dispositivo.tipo }}</span>
-                            <span *ngIf="dispositivo.sensores"> (Sensores: {{ dispositivo.sensores?.join(', ') }})</span>
-                        </option>
-                    </select>
-                    <small class="text-hint" *ngIf="dispositivosDisponibles.length === 0">
-                        No hay dispositivos detectados
-                    </small>
-                </div>
+             <!-- Selector de dispositivos -->
+<!-- Selector de dispositivos -->
+<div class="form-group">
+    <label>📱 Dispositivos Disponibles</label>
+    <select [(ngModel)]="dispositivoSeleccionado" name="dispositivoId" 
+            (change)="onDispositivoSeleccionado()">  <!-- ✅ AGREGAR ESTE EVENTO -->
+        <option value="">Sin dispositivo</option>
+        <option *ngFor="let dispositivo of dispositivosDisponibles" 
+                [value]="dispositivo.dispositivoId">
+            {{ dispositivo.dispositivoId }} 
+            <span *ngIf="dispositivo.tipo">- {{ dispositivo.tipo }}</span>
+            <span *ngIf="dispositivo.sensores"> (Sensores: {{ dispositivo.sensores?.join(', ') }})</span>
+        </option>
+    </select>
+</div>
 
                 <div class="modal-actions">
                     <button type="button" class="btn-modal btn-cancelar" (click)="cerrarModalApiario()">Cancelar</button>

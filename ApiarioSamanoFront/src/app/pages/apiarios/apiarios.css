@@ -498,6 +498,22 @@ body {
 }
 
 /* Controles de servos */
+.control-group {
+    margin-bottom: 15px;
+}
+
+.labels-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.labels-container span {
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
 .servo-control {
     display: flex;
     align-items: center;
@@ -537,8 +553,11 @@ body {
 .servo-value {
     font-weight: 600;
     color: #92400e;
-    min-width: 40px;
+    min-width: 80px;
     text-align: center;
+    padding: 4px 8px;
+    background: #fef3c7;
+    border-radius: 6px;
 }
 
 /* Control RGB */

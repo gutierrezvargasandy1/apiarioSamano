@@ -105,42 +105,42 @@ public class ApiariosController {
     }
 
     // ===========================
-    // COMANDOS MQTT - ACTUALIZADOS
+    // COMANDOS MQTT - ACTUALIZADOS PARA DISPOSITIVOS
     // ===========================
 
     // 🌀 Ventilador (Motor A)
-    @PostMapping("/{id}/ventilador/{estado}")
-    public String ventilador(@PathVariable String id, @PathVariable boolean estado) {
-        mqtt.enviarComandoVentilador(id, estado);
-        return "Ventilador " + (estado ? "ENCENDIDO" : "APAGADO");
+    @PostMapping("/comandos/{dispositivoId}/ventilador/{estado}")
+    public String ventilador(@PathVariable String dispositivoId, @PathVariable boolean estado) {
+        mqtt.enviarComandoVentilador(dispositivoId, estado);
+        return "Ventilador " + (estado ? "ENCENDIDO" : "APAGADO") + " para dispositivo " + dispositivoId;
     }
 
     // 🚪 Compuerta (Motor B)
-    @PostMapping("/{id}/compuerta/{estado}")
-    public String compuerta(@PathVariable String id, @PathVariable boolean estado) {
-        mqtt.enviarComandoCompuerta(id, estado);
-        return "Compuerta " + (estado ? "ABIERTA" : "CERRADA");
+    @PostMapping("/comandos/{dispositivoId}/compuerta/{estado}")
+    public String compuerta(@PathVariable String dispositivoId, @PathVariable boolean estado) {
+        mqtt.enviarComandoCompuerta(dispositivoId, estado);
+        return "Compuerta " + (estado ? "ABIERTA" : "CERRADA") + " para dispositivo " + dispositivoId;
     }
 
     // 💡 Luz
-    @PostMapping("/{id}/luz/{estado}")
-    public String luz(@PathVariable String id, @PathVariable boolean estado) {
-        mqtt.enviarComandoLuz(id, estado);
-        return "Luz " + (estado ? "ENCENDIDA" : "APAGADA");
+    @PostMapping("/comandos/{dispositivoId}/luz/{estado}")
+    public String luz(@PathVariable String dispositivoId, @PathVariable boolean estado) {
+        mqtt.enviarComandoLuz(dispositivoId, estado);
+        return "Luz " + (estado ? "ENCENDIDA" : "APAGADA") + " para dispositivo " + dispositivoId;
     }
 
     // 🔧 Servo 1
-    @PostMapping("/{id}/servo1/{grados}")
-    public String servo1(@PathVariable String id, @PathVariable int grados) {
-        mqtt.enviarServo1(id, grados);
-        return "Servo 1 movido a " + grados + " grados";
+    @PostMapping("/comandos/{dispositivoId}/servo1/{grados}")
+    public String servo1(@PathVariable String dispositivoId, @PathVariable int grados) {
+        mqtt.enviarServo1(dispositivoId, grados);
+        return "Servo 1 movido a " + grados + " grados para dispositivo " + dispositivoId;
     }
 
     // 🔧 Servo 2
-    @PostMapping("/{id}/servo2/{grados}")
-    public String servo2(@PathVariable String id, @PathVariable int grados) {
-        mqtt.enviarServo2(id, grados);
-        return "Servo 2 movido a " + grados + " grados";
+    @PostMapping("/comandos/{dispositivoId}/servo2/{grados}")
+    public String servo2(@PathVariable String dispositivoId, @PathVariable int grados) {
+        mqtt.enviarServo2(dispositivoId, grados);
+        return "Servo 2 movido a " + grados + " grados para dispositivo " + dispositivoId;
     }
 
     // 📡 Obtener dispositivos detectados
@@ -159,10 +159,11 @@ public class ApiariosController {
         return ResponseEntity.notFound().build();
     }
 
-    // 📊 Obtener datos de sensores de un apiario
-    @GetMapping("/{apiarioId}/sensores")
-    public ResponseEntity<Map<String, String>> obtenerDatosSensores(@PathVariable String apiarioId) {
-        Map<String, String> datos = mqtt.getUltimosDatosSensores(apiarioId);
+    // 📊 Obtener datos de sensores de un DISPOSITIVO
+    @GetMapping("/dispositivos/{dispositivoId}/sensores")
+    public ResponseEntity<Map<String, String>> obtenerDatosSensores(@PathVariable String dispositivoId) {
+        Map<String, String> datos = mqtt.getUltimosDatosSensores(dispositivoId);
         return ResponseEntity.ok(datos);
     }
+
 }
