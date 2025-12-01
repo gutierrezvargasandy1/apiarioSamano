@@ -9,7 +9,7 @@ import com.ApiarioSamano.MicroServiceAlmacen.model.Almacen;
 import com.ApiarioSamano.MicroServiceAlmacen.model.Herramientas;
 import com.ApiarioSamano.MicroServiceAlmacen.repository.AlmacenRepository;
 import com.ApiarioSamano.MicroServiceAlmacen.repository.HerramientasRepository;
-import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClientMicroservice;
+import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClient.IProveedoresService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,9 @@ public class HerramientasService {
 
     private final HerramientasRepository herramientasRepository;
     private final AlmacenRepository almacenRepository;
-    private final ProveedoresClientMicroservice proveedoresClient;
+
+    // PROXY: Cambiamos a la interfaz que será implementada por el Proxy con cache
+    private final IProveedoresService proveedoresService;
 
     // ================== Mapeos ==================
     private HerramientasResponse mapHerramienta(Herramientas h) {
@@ -67,15 +69,26 @@ public class HerramientasService {
         // ✅ CORRECCIÓN: Agregar el ID del almacén
         response.setIdAlmacen(h.getAlmacen() != null ? h.getAlmacen().getId() : null);
 
-        // Obtener información del proveedor
+        // Obtener información del proveedor usando el Proxy con cache
         try {
-            List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
+            log.debug("🔍 [CACHE-PROVEEDORES] Buscando proveedor ID: {} para herramienta", h.getIdProveedor());
+            List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+
             proveedores.stream()
                     .filter(p -> p.getId() != null && p.getId().equals(h.getIdProveedor().longValue()))
                     .findFirst()
-                    .ifPresent(response::setProveedor);
+                    .ifPresent(proveedor -> {
+                        response.setProveedor(proveedor);
+                        log.debug("✅ [CACHE-PROVEEDORES] Proveedor encontrado: {}", proveedor.getNombreRepresentante());
+                    });
+
+            if (response.getProveedor() == null) {
+                log.warn("⚠️ [CACHE-PROVEEDORES] Proveedor con ID {} no encontrado para herramienta {}",
+                        h.getIdProveedor(), h.getId());
+            }
         } catch (Exception e) {
-            log.error("⚠️ Error al obtener proveedor para herramienta ID {}: {}", h.getId(), e.getMessage());
+            log.error("❌ [CACHE-PROVEEDORES] Error al obtener proveedor para herramienta ID {}: {}",
+                    h.getId(), e.getMessage());
             response.setProveedor(null);
         }
 
@@ -87,10 +100,10 @@ public class HerramientasService {
     public CodigoResponse<HerramientasResponse> guardar(HerramientasRequest req) {
         log.info("🔍 Iniciando proceso de guardar/actualizar herramienta: {}", req.getNombre());
 
-        // 🔹 Validar proveedor
-        log.info("🔍 Consultando microservicio de proveedores...");
-        List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
-        log.info("✅ Proveedores obtenidos: {} registros", proveedores.size());
+        // 🔹 Validar proveedor usando Proxy con cache
+        log.info("🔍 [CACHE-PROVEEDORES] Consultando microservicio de proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Proveedores obtenidos: {} registros", proveedores.size());
 
         boolean existeProveedor = proveedores.stream()
                 .anyMatch(p -> p.getId().equals(req.getIdProveedor().longValue()));
@@ -264,14 +277,14 @@ public class HerramientasService {
 
     // ================== MÉTODOS CON PROVEEDOR ==================
     public CodigoResponse<List<HerramientasConProveedorResponse>> obtenerTodasConProveedor() {
-        log.info("📋 Obteniendo herramientas con información de proveedor");
+        log.info("📋 Obteniendo herramientas con información de proveedor (con Proxy/Cache)");
 
         List<Herramientas> herramientas = herramientasRepository.findAll();
         log.info("✅ Se obtuvieron {} herramientas", herramientas.size());
 
-        log.info("🔍 Consultando microservicio de proveedores...");
-        List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
-        log.info("✅ Se obtuvieron {} proveedores", proveedores.size());
+        log.info("🔍 [CACHE-PROVEEDORES] Consultando microservicio de proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Se obtuvieron {} proveedores", proveedores.size());
 
         List<HerramientasConProveedorResponse> resultado = herramientas.stream()
                 .map(this::mapHerramientaConProveedor)
@@ -282,7 +295,7 @@ public class HerramientasService {
     }
 
     public CodigoResponse<HerramientasConProveedorResponse> obtenerPorIdConProveedor(Long id) {
-        log.info("🔍 Buscando herramienta con proveedor, ID: {}", id);
+        log.info("🔍 Buscando herramienta con proveedor, ID: {} (con Proxy/Cache)", id);
 
         Optional<Herramientas> optHerramienta = herramientasRepository.findById(id);
         if (optHerramienta.isEmpty()) {
@@ -298,10 +311,10 @@ public class HerramientasService {
     }
 
     public CodigoResponse<List<HerramientasResponse>> obtenerPorProveedor(Integer idProveedor) {
-        log.info("🔍 Buscando herramientas del proveedor ID: {}", idProveedor);
+        log.info("🔍 Buscando herramientas del proveedor ID: {} (con Proxy/Cache)", idProveedor);
 
-        log.info("🔍 Validando existencia del proveedor...");
-        List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
+        log.info("🔍 [CACHE-PROVEEDORES] Validando existencia del proveedor...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
         boolean existeProveedor = proveedores.stream()
                 .anyMatch(p -> p.getId().equals(idProveedor.longValue()));
 
@@ -318,5 +331,49 @@ public class HerramientasService {
 
         log.info("✅ Se encontraron {} herramientas del proveedor {}", lista.size(), idProveedor);
         return new CodigoResponse<>(200, "Herramientas del proveedor obtenidas", lista);
+    }
+
+    /**
+     * Método para obtener herramientas con información completa (almacén y
+     * proveedor)
+     */
+    public CodigoResponse<List<HerramientasConProveedorResponse>> obtenerHerramientasCompletas() {
+        log.info("📋 Obteniendo herramientas con información completa (almacén + proveedor)");
+
+        List<Herramientas> herramientas = herramientasRepository.findAll();
+        log.info("✅ Se obtuvieron {} herramientas", herramientas.size());
+
+        // PROXY: Una sola llamada cacheada para todos los proveedores
+        log.info("🔍 [CACHE-PROVEEDORES] Obteniendo proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Proveedores obtenidos: {}", proveedores.size());
+
+        List<HerramientasConProveedorResponse> resultado = herramientas.stream()
+                .map(herramienta -> {
+                    HerramientasConProveedorResponse response = new HerramientasConProveedorResponse();
+                    response.setId(herramienta.getId());
+                    response.setNombre(herramienta.getNombre());
+
+                    // Convertir foto a Base64
+                    if (herramienta.getFoto() != null && herramienta.getFoto().length > 0) {
+                        response.setFoto(Base64.getEncoder().encodeToString(herramienta.getFoto()));
+                    }
+
+                    // Información del almacén
+                    response.setIdAlmacen(herramienta.getAlmacen() != null ? herramienta.getAlmacen().getId() : null);
+
+                    // Buscar proveedor en la lista cacheada
+                    proveedores.stream()
+                            .filter(p -> p.getId() != null
+                                    && p.getId().equals(herramienta.getIdProveedor().longValue()))
+                            .findFirst()
+                            .ifPresent(response::setProveedor);
+
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        log.info("✅ Herramientas completas procesadas: {} registros", resultado.size());
+        return new CodigoResponse<>(200, "Herramientas con información completa obtenidas", resultado);
     }
 }

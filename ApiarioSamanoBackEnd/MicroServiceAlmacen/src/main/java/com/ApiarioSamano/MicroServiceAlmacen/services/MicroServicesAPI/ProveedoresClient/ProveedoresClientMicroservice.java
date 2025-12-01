@@ -1,9 +1,8 @@
-package com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI;
+package com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClient;
 
 import com.ApiarioSamano.MicroServiceAlmacen.config.JwtTokenProvider;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.CodigoResponse;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.ProveedoresClientMicroserviceDTO.ProveedorResponseDTO;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,37 +15,43 @@ import java.util.Arrays;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
-public class ProveedoresClientMicroservice {
+public class ProveedoresClientMicroservice implements IProveedoresService {
 
     private static final Logger log = LoggerFactory.getLogger(ProveedoresClientMicroservice.class);
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     @Value("${microservice.proveedores.url}")
     private String urlProveedores;
 
+    // CORRECCIÓN: Usar RestTemplate inyectado en lugar de crear uno nuevo
+    public ProveedoresClientMicroservice(JwtTokenProvider jwtTokenProvider, RestTemplate restTemplate) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.restTemplate = restTemplate;
+    }
+
+    @Override
     public List<ProveedorResponseDTO> obtenerTodosProveedores() {
-        log.info("Iniciando obtención de todos los proveedores...");
+        log.info("🔄 [PROVEEDORES] Iniciando obtención de todos los proveedores...");
 
         String token = jwtTokenProvider.getCurrentJwtToken();
-        log.debug("Token JWT obtenido: {}", token);
+        log.debug("🔐 [PROVEEDORES] Token JWT obtenido: {}", token);
 
         if (token == null) {
-            log.error("No se encontró un token JWT válido en la solicitud actual.");
+            log.error("❌ [PROVEEDORES] No se encontró un token JWT válido en la solicitud actual.");
             throw new RuntimeException("No se encontró un token JWT válido en la solicitud actual.");
         }
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + token);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        log.debug("Headers preparados: {}", headers);
+        log.debug("📋 [PROVEEDORES] Headers preparados: {}", headers);
 
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
         try {
-            log.info("Realizando llamada HTTP GET a {}", urlProveedores);
+            log.info("🌐 [PROVEEDORES] Realizando llamada HTTP GET a {}", urlProveedores);
             ResponseEntity<CodigoResponse<ProveedorResponseDTO[]>> response = restTemplate.exchange(
                     urlProveedores,
                     HttpMethod.GET,
@@ -55,18 +60,19 @@ public class ProveedoresClientMicroservice {
                     });
 
             CodigoResponse<ProveedorResponseDTO[]> codigoResponse = response.getBody();
-            log.debug("Respuesta recibida: {}", codigoResponse);
+            log.debug("📨 [PROVEEDORES] Respuesta recibida: {}", codigoResponse);
 
             if (codigoResponse != null && codigoResponse.getData() != null) {
-                log.info("Proveedores obtenidos correctamente. Cantidad: {}", codigoResponse.getData().length);
+                log.info("✅ [PROVEEDORES] Proveedores obtenidos correctamente. Cantidad: {}",
+                        codigoResponse.getData().length);
                 return Arrays.asList(codigoResponse.getData());
             } else {
-                log.warn("No se encontraron proveedores en la respuesta del microservicio.");
+                log.warn("⚠️ [PROVEEDORES] No se encontraron proveedores en la respuesta del microservicio.");
                 return List.of();
             }
 
         } catch (Exception e) {
-            log.error("Error al obtener proveedores desde el microservicio: {}", e.getMessage(), e);
+            log.error("❌ [PROVEEDORES] Error al obtener proveedores desde el microservicio: {}", e.getMessage(), e);
             throw new RuntimeException("Error al obtener proveedores desde el microservicio", e);
         }
     }

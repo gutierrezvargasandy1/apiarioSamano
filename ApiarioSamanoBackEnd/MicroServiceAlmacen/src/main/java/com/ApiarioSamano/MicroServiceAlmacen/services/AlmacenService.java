@@ -5,8 +5,9 @@ import com.ApiarioSamano.MicroServiceAlmacen.dto.AlmacenDTO.AlmacenRequest;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.AlmacenDTO.AlmacenResponse;
 import com.ApiarioSamano.MicroServiceAlmacen.model.Almacen;
 import com.ApiarioSamano.MicroServiceAlmacen.repository.AlmacenRepository;
-import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.GeneradorCodigoClient;
-import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.LotesClient;
+import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.GeneradorCodigosClient.IGeneradorCodigoService;
+import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.LotesClient.ILotesService;
+import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClient.IProveedoresService;
 
 import jakarta.transaction.Transactional;
 import java.util.Base64;
@@ -16,6 +17,7 @@ import com.ApiarioSamano.MicroServiceAlmacen.dto.LotesClientMicroserviceDTO.Lote
 import com.ApiarioSamano.MicroServiceAlmacen.dto.LotesClientMicroserviceDTO.ReporteEspaciosResponse;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.MateriasPrimasDTO.MateriasPrimasResponse;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.MedicamentosDTO.MedicamentosResponse;
+import com.ApiarioSamano.MicroServiceAlmacen.dto.ProveedoresClientMicroserviceDTO.ProveedorResponseDTO;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,11 +35,17 @@ public class AlmacenService {
     @Autowired
     private AlmacenRepository almacenRepository;
 
+    // PROXY: Usamos la interfaz que será implementada por el Proxy con cache
     @Autowired
-    private GeneradorCodigoClient generadorCodigoClient;
+    private IGeneradorCodigoService generadorCodigoService;
 
+    // PROXY: Ahora también usamos la interfaz para lotes
     @Autowired
-    private LotesClient lotesClient;
+    private ILotesService lotesService;
+
+    // NUEVO: Proxy para proveedores
+    @Autowired
+    private IProveedoresService proveedoresService;
 
     /**
      * Calcula y actualiza los espacios ocupados para un almacén específico
@@ -66,8 +74,10 @@ public class AlmacenService {
             // 2. Obtener y contar lotes externos que coincidan con este almacén
             int espaciosLotes = 0;
             try {
-                log.info("🔄 [DEBUG] Intentando obtener lotes del microservicio...");
-                List<LoteResponseDTO> lotes = lotesClient.obtenerTodosLotes();
+                log.info("🔄 [DEBUG] Intentando obtener lotes del microservicio (con Proxy/Cache)...");
+
+                // PROXY: Ahora usamos el proxy con cache para lotes
+                List<LoteResponseDTO> lotes = lotesService.obtenerTodosLotes();
                 log.info("🔄 [DEBUG] Lotes obtenidos del microservicio. Total lotes: {}",
                         lotes != null ? lotes.size() : "null");
 
@@ -193,14 +203,15 @@ public class AlmacenService {
             List<LoteResponseDTO> detalleLotes = new ArrayList<>();
 
             try {
-                log.info("📋 [DEBUG] Obteniendo lotes externos para reporte...");
-                List<LoteResponseDTO> lotes = lotesClient.obtenerTodosLotes();
+                log.info("📋 [DEBUG] Obteniendo lotes externos para reporte (con Proxy/Cache)...");
+
+                // PROXY: Usamos el método específico para obtener lotes por almacén (que
+                // también tiene cache)
+                List<LoteResponseDTO> lotes = lotesService.obtenerLotesPorAlmacen(idAlmacen);
                 log.info("📋 [DEBUG] Lotes obtenidos para reporte: {}", lotes != null ? lotes.size() : "null");
 
                 if (lotes != null) {
-                    detalleLotes = lotes.stream()
-                            .filter(lote -> lote.getIdAlmacen() != null && lote.getIdAlmacen().equals(idAlmacen))
-                            .collect(Collectors.toList());
+                    detalleLotes = lotes;
                     lotesExternos = detalleLotes.size();
                     log.info("📋 [DEBUG] Lotes filtrados para almacén {}: {}", idAlmacen, lotesExternos);
                 }
@@ -243,6 +254,96 @@ public class AlmacenService {
         }
     }
 
+    /**
+     * Método para obtener todos los proveedores (usando Proxy con cache)
+     */
+    public CodigoResponse<List<ProveedorResponseDTO>> obtenerTodosProveedores() {
+        try {
+            log.info("🔄 [DEBUG] INICIO - obtenerTodosProveedores (con Proxy/Cache)...");
+
+            // PROXY: Usamos el proxy con cache para proveedores
+            List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+            log.info("✅ [DEBUG] Proveedores obtenidos correctamente. Cantidad: {}",
+                    proveedores != null ? proveedores.size() : 0);
+
+            return new CodigoResponse<>(200, "Proveedores obtenidos correctamente", proveedores);
+
+        } catch (Exception e) {
+            log.error("❌ [DEBUG] ERROR CRÍTICO en obtenerTodosProveedores: {}", e.getMessage(), e);
+            return new CodigoResponse<>(500, "Error al obtener proveedores: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * Método para obtener proveedores relacionados con un almacén específico
+     */
+    public CodigoResponse<List<ProveedorResponseDTO>> obtenerProveedoresPorAlmacen(Long idAlmacen) {
+        try {
+            log.info("🔄 [DEBUG] INICIO - obtenerProveedoresPorAlmacen para ID: {} (con Proxy/Cache)...", idAlmacen);
+
+            // Primero obtenemos el almacén
+            Optional<Almacen> opt = almacenRepository.findById(idAlmacen);
+            if (opt.isEmpty()) {
+                log.error("❌ [DEBUG] Almacén no encontrado para ID: {}", idAlmacen);
+                return new CodigoResponse<>(404, "Almacén no encontrado", null);
+            }
+
+            Almacen almacen = opt.get();
+
+            // PROXY: Obtenemos todos los proveedores (con cache)
+            List<ProveedorResponseDTO> todosProveedores = proveedoresService.obtenerTodosProveedores();
+
+            // Extraemos IDs de proveedores únicos del almacén
+            List<Long> idsProveedoresUnicos = new ArrayList<>();
+
+            // De materias primas - CORRECCIÓN: Convertir Integer a Long
+            if (almacen.getMateriasPrimas() != null) {
+                almacen.getMateriasPrimas().stream()
+                        .map(materia -> materia.getIdProveedor())
+                        .filter(id -> id != null)
+                        .map(Integer::longValue) // CORRECCIÓN: Convertir Integer a Long
+                        .forEach(idsProveedoresUnicos::add);
+            }
+
+            // De herramientas - CORRECCIÓN: Convertir Integer a Long
+            if (almacen.getHerramientas() != null) {
+                almacen.getHerramientas().stream()
+                        .map(herramienta -> herramienta.getIdProveedor())
+                        .filter(id -> id != null)
+                        .map(Integer::longValue) // CORRECCIÓN: Convertir Integer a Long
+                        .forEach(idsProveedoresUnicos::add);
+            }
+
+            // De medicamentos - CORRECCIÓN: Convertir Integer a Long
+            if (almacen.getMedicamentos() != null) {
+                almacen.getMedicamentos().stream()
+                        .map(medicamento -> medicamento.getIdProveedor())
+                        .filter(id -> id != null)
+                        .map(Integer::longValue) // CORRECCIÓN: Convertir Integer a Long
+                        .forEach(idsProveedoresUnicos::add);
+            }
+
+            // Filtrar proveedores únicos
+            List<Long> idsUnicos = idsProveedoresUnicos.stream()
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // Filtrar la lista de proveedores
+            List<ProveedorResponseDTO> proveedoresFiltrados = todosProveedores.stream()
+                    .filter(proveedor -> idsUnicos.contains(proveedor.getId()))
+                    .collect(Collectors.toList());
+
+            log.info("✅ [DEBUG] Proveedores del almacén {} obtenidos correctamente. Cantidad: {}",
+                    idAlmacen, proveedoresFiltrados.size());
+
+            return new CodigoResponse<>(200, "Proveedores del almacén obtenidos correctamente", proveedoresFiltrados);
+
+        } catch (Exception e) {
+            log.error("❌ [DEBUG] ERROR CRÍTICO en obtenerProveedoresPorAlmacen: {}", e.getMessage(), e);
+            return new CodigoResponse<>(500, "Error al obtener proveedores del almacén: " + e.getMessage(), null);
+        }
+    }
+
     // Crear o actualizar
     public CodigoResponse<AlmacenResponse> guardarAlmacen(AlmacenRequest almacenRequest) {
         try {
@@ -250,10 +351,11 @@ public class AlmacenService {
             log.info("🔄 [DEBUG] Datos recibidos - Ubicación: {}, Capacidad: {}",
                     almacenRequest.getUbicacion(), almacenRequest.getCapacidad());
 
-            log.info("🔄 [DEBUG] Solicitando código al microservicio de generador de códigos...");
-            String codigoResponse = generadorCodigoClient.generarAlmacen(
+            // PROXY: Usamos el proxy con cache para generación de códigos
+            log.info("🔄 [DEBUG] Solicitando código al microservicio de generador de códigos (con Proxy/Cache)...");
+            String codigoResponse = generadorCodigoService.generarAlmacen(
                     new AlmacenRequestClient(almacenRequest.getUbicacion(), "AlmacenGeneral"));
-            log.info("🔄 [DEBUG] Código generado recibido del microservicio: {}", codigoResponse);
+            log.info("🔄 [DEBUG] Código generado recibido: {}", codigoResponse);
 
             Almacen nuevoAlmacen = new Almacen();
             nuevoAlmacen.setNumeroSeguimiento(codigoResponse);

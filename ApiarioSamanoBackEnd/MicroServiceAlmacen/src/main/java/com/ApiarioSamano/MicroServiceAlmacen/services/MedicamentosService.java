@@ -12,8 +12,7 @@ import com.ApiarioSamano.MicroServiceAlmacen.model.Medicamento;
 import com.ApiarioSamano.MicroServiceAlmacen.model.Almacen;
 import com.ApiarioSamano.MicroServiceAlmacen.repository.AlmacenRepository;
 import com.ApiarioSamano.MicroServiceAlmacen.repository.MedicamentoRepository;
-import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClientMicroservice;
-import com.ApiarioSamano.MicroServiceAlmacen.dto.CodigoResponse;
+import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClient.IProveedoresService;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.MedicamentosDTO.MedicamentosRequest;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.MedicamentosDTO.MedicamentosResponse;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.MedicamentosDTO.MedicamnetosConProveedorResponse;
@@ -29,12 +28,11 @@ public class MedicamentosService {
 
     private final MedicamentoRepository medicamentosRepository;
     private final AlmacenRepository almacenRepository;
-    private final ProveedoresClientMicroservice proveedorClient;
 
-    // 📌 Crear o actualizar medicamento
+    private final IProveedoresService proveedoresService;
+
     @Transactional
     public MedicamentosResponse guardar(MedicamentosRequest request) {
-        // Determinar si es creación o actualización
         boolean esActualizacion = request.getId() != null;
 
         if (esActualizacion) {
@@ -43,9 +41,9 @@ public class MedicamentosService {
             log.info("🆕 Iniciando proceso de CREAR medicamento: {}", request.getNombre());
         }
 
-        log.info("🔍 Consultando microservicio de proveedores...");
-        List<ProveedorResponseDTO> proveedores = proveedorClient.obtenerTodosProveedores();
-        log.info("✅ Proveedores obtenidos: {} registros", proveedores.size());
+        log.info("🔍 [CACHE-PROVEEDORES] Consultando microservicio de proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Proveedores obtenidos: {} registros", proveedores.size());
 
         boolean existeProveedor = proveedores.stream()
                 .anyMatch(p -> p.getId().equals(request.getIdProveedor().longValue()));
@@ -192,14 +190,14 @@ public class MedicamentosService {
     // 📌 Obtener todos los medicamentos con su proveedor (consulta al microservicio
     // Proveedores)
     public List<MedicamnetosConProveedorResponse> obtenerTodosConProveedor() {
-        log.info("📋 Obteniendo medicamentos con información de proveedor");
+        log.info("📋 Obteniendo medicamentos con información de proveedor (con Proxy/Cache)");
 
         List<Medicamento> medicamentos = medicamentosRepository.findAll();
         log.info("✅ Se obtuvieron {} medicamentos", medicamentos.size());
 
-        log.info("🔍 Consultando microservicio de proveedores...");
-        List<ProveedorResponseDTO> proveedores = proveedorClient.obtenerTodosProveedores();
-        log.info("✅ Se obtuvieron {} proveedores", proveedores.size());
+        log.info("🔍 [CACHE-PROVEEDORES] Consultando microservicio de proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Se obtuvieron {} proveedores", proveedores.size());
 
         List<MedicamnetosConProveedorResponse> resultado = medicamentos.stream()
                 .map(this::mapToResponseConProveedor)
@@ -211,10 +209,10 @@ public class MedicamentosService {
 
     // 📌 Obtener medicamentos por ID de proveedor
     public List<MedicamentosResponse> obtenerPorProveedor(Integer idProveedor) {
-        log.info("🔍 Buscando medicamentos del proveedor ID: {}", idProveedor);
+        log.info("🔍 Buscando medicamentos del proveedor ID: {} (con Proxy/Cache)", idProveedor);
 
-        log.info("🔍 Validando existencia del proveedor...");
-        List<ProveedorResponseDTO> proveedores = proveedorClient.obtenerTodosProveedores();
+        log.info("🔍 [CACHE-PROVEEDORES] Validando existencia del proveedor...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
         boolean existeProveedor = proveedores.stream()
                 .anyMatch(p -> p.getId().equals(idProveedor.longValue()));
 
@@ -235,10 +233,10 @@ public class MedicamentosService {
 
     // 📌 Obtener medicamentos por ID de proveedor (con datos del proveedor)
     public List<MedicamnetosConProveedorResponse> obtenerPorProveedorConDetalle(Integer idProveedor) {
-        log.info("🔍 Buscando medicamentos del proveedor ID: {} con detalles", idProveedor);
+        log.info("🔍 Buscando medicamentos del proveedor ID: {} con detalles (con Proxy/Cache)", idProveedor);
 
-        log.info("🔍 Validando existencia del proveedor...");
-        List<ProveedorResponseDTO> proveedores = proveedorClient.obtenerTodosProveedores();
+        log.info("🔍 [CACHE-PROVEEDORES] Validando existencia del proveedor...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
         boolean existeProveedor = proveedores.stream()
                 .anyMatch(p -> p.getId().equals(idProveedor.longValue()));
 
@@ -284,6 +282,101 @@ public class MedicamentosService {
         }
     }
 
+    /**
+     * Método para obtener medicamentos con información completa (almacén y
+     * proveedor)
+     */
+    public List<MedicamnetosConProveedorResponse> obtenerMedicamentosCompletos() {
+        log.info("📋 Obteniendo medicamentos con información completa (almacén + proveedor)");
+
+        List<Medicamento> medicamentos = medicamentosRepository.findAll();
+        log.info("✅ Se obtuvieron {} medicamentos", medicamentos.size());
+
+        // PROXY: Una sola llamada cacheada para todos los proveedores
+        log.info("🔍 [CACHE-PROVEEDORES] Obteniendo proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Proveedores obtenidos: {}", proveedores.size());
+
+        List<MedicamnetosConProveedorResponse> resultado = medicamentos.stream()
+                .map(medicamento -> {
+                    MedicamnetosConProveedorResponse response = new MedicamnetosConProveedorResponse();
+                    response.setId(medicamento.getId());
+                    response.setNombre(medicamento.getNombre());
+                    response.setDescripcion(medicamento.getDescripcion());
+                    response.setCantidad(medicamento.getCantidad());
+
+                    // Convertir foto a Base64
+                    if (medicamento.getFoto() != null && medicamento.getFoto().length > 0) {
+                        response.setFoto(Base64.getEncoder().encodeToString(medicamento.getFoto()));
+                    }
+
+                    // Buscar proveedor en la lista cacheada
+                    proveedores.stream()
+                            .filter(p -> p.getId() != null
+                                    && p.getId().equals(medicamento.getIdProveedor().longValue()))
+                            .findFirst()
+                            .ifPresent(proveedor -> {
+                                response.setProveedor(proveedor);
+                                log.debug("✅ [CACHE-PROVEEDORES] Proveedor encontrado: {}",
+                                        proveedor.getNombreEmpresa());
+                            });
+
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        log.info("✅ Medicamentos completos procesados: {} registros", resultado.size());
+        return resultado;
+    }
+
+    /**
+     * Método para obtener medicamentos por almacén con información de proveedor
+     */
+    public List<MedicamnetosConProveedorResponse> obtenerPorAlmacenConProveedor(Long idAlmacen) {
+        log.info("🔍 Buscando medicamentos del almacén {} con información de proveedor (con Proxy/Cache)", idAlmacen);
+
+        Optional<Almacen> optAlmacen = almacenRepository.findById(idAlmacen);
+        if (optAlmacen.isEmpty()) {
+            log.warn("⚠️ Almacén con ID {} no encontrado", idAlmacen);
+            throw new RuntimeException("Almacén no encontrado con ID: " + idAlmacen);
+        }
+
+        Almacen almacen = optAlmacen.get();
+        List<Medicamento> medicamentos = medicamentosRepository.findByAlmacen(almacen);
+        log.info("✅ Se encontraron {} medicamentos en el almacén {}", medicamentos.size(), idAlmacen);
+
+        // PROXY: Una sola llamada cacheada para todos los proveedores
+        log.info("🔍 [CACHE-PROVEEDORES] Obteniendo proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+
+        List<MedicamnetosConProveedorResponse> resultado = medicamentos.stream()
+                .map(medicamento -> {
+                    MedicamnetosConProveedorResponse response = new MedicamnetosConProveedorResponse();
+                    response.setId(medicamento.getId());
+                    response.setNombre(medicamento.getNombre());
+                    response.setDescripcion(medicamento.getDescripcion());
+                    response.setCantidad(medicamento.getCantidad());
+
+                    // Convertir foto a Base64
+                    if (medicamento.getFoto() != null && medicamento.getFoto().length > 0) {
+                        response.setFoto(Base64.getEncoder().encodeToString(medicamento.getFoto()));
+                    }
+
+                    // Buscar proveedor en la lista cacheada
+                    proveedores.stream()
+                            .filter(p -> p.getId() != null
+                                    && p.getId().equals(medicamento.getIdProveedor().longValue()))
+                            .findFirst()
+                            .ifPresent(response::setProveedor);
+
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        log.info("✅ Medicamentos del almacén con proveedor procesados: {} registros", resultado.size());
+        return resultado;
+    }
+
     // ==========================
     // MÉTODOS DE MAPEOS
     // ==========================
@@ -322,8 +415,8 @@ public class MedicamentosService {
         }
 
         try {
-            // Obtener todos los proveedores desde el microservicio
-            List<ProveedorResponseDTO> proveedores = proveedorClient.obtenerTodosProveedores();
+            // PROXY: Obtener todos los proveedores desde el microservicio (con cache)
+            List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
 
             // Buscar el proveedor correspondiente al idProveedor del medicamento
             ProveedorResponseDTO proveedor = proveedores.stream()
@@ -333,12 +426,17 @@ public class MedicamentosService {
 
             response.setProveedor(proveedor);
             if (proveedor != null) {
-                log.debug("✅ Proveedor asociado al medicamento {}: {}", m.getId(), proveedor.getNombreEmpresa());
+                log.debug("✅ [CACHE-PROVEEDORES] Proveedor asociado al medicamento {}: {}", m.getId(),
+                        proveedor.getNombreEmpresa());
+            } else {
+                log.warn("⚠️ [CACHE-PROVEEDORES] Proveedor con ID {} no encontrado para medicamento {}",
+                        m.getIdProveedor(), m.getId());
             }
         } catch (Exception e) {
             // En caso de error en la comunicación con el microservicio
             response.setProveedor(null);
-            log.error("⚠️ Error al obtener proveedor para medicamento ID {}: {}", m.getId(), e.getMessage());
+            log.error("❌ [CACHE-PROVEEDORES] Error al obtener proveedor para medicamento ID {}: {}", m.getId(),
+                    e.getMessage());
         }
 
         return response;

@@ -18,6 +18,19 @@ interface MensajeChat {
   tipo: 'usuario' | 'ia';
   estado?: 'enviando' | 'enviado' | 'error';
 }
+// En la sección de interfaces
+interface HistorialMedicoItem {
+  id: number;
+  fechaAplicacion: string;
+  notas: string;
+  medicamentos?: any[];
+  receta?: Receta;
+}
+
+interface HistorialCompleto {
+  apiarioId: number;
+  historiales: HistorialMedicoItem[];
+}
 
 interface Receta {
   id: number;
@@ -82,6 +95,14 @@ export class Apiarios implements OnInit {
   // Estado de la aplicación
   apiarios: Apiario[] = [];
   apiarioSeleccionado: Apiario | null = null;
+
+    // 🔍 Propiedades para historial completo
+  historialCompleto: HistorialCompleto | null = null;
+  cargandoHistorial: boolean = false;
+  mostrarHistorialCompleto: boolean = false;
+
+isApiarioOpening: boolean = false;
+
   
   // Modales
   mostrarModalApiario: boolean = false;
@@ -140,7 +161,7 @@ export class Apiarios implements OnInit {
   estadoCompuerta: boolean = false; // 🔄 NUEVO: Estado para compuerta
   estadoLuz: boolean = false;
   servo1Grados: number = 90;
-  servo2Grados: number = 90;
+  servo2Grados: number = 110;
   datosSensores: DatosSensores = {};
 
   // Carga de chat
@@ -176,6 +197,117 @@ cargarDatosSensores(idApiario: string): void {
       this.datosSensores = {};
     }
   });
+}
+
+obtenerHistorialCompleto(): void {
+  if (!this.apiarioSeleccionado) {
+    this.toastService.warning('Selección requerida', 'Selecciona un apiario primero');
+    return;
+  }
+
+  this.cargandoHistorial = true;
+  this.historialCompleto = null;
+  this.mostrarHistorialCompleto = true;
+
+  this.apiarioService.obtenerHistorialCompleto(this.apiarioSeleccionado.id).subscribe({
+    next: (response: any) => {
+      if (response.codigo === 200 && response.data) {
+        this.historialCompleto = response.data;
+        console.log('📋 Historial completo cargado:', this.historialCompleto);
+      } else {
+        this.toastService.error('Error', response.descripcion || 'Error al cargar el historial');
+        this.historialCompleto = {
+          apiarioId: this.apiarioSeleccionado!.id,
+          historiales: []
+        };
+      }
+      this.cargandoHistorial = false;
+      this.cdRef.detectChanges();
+    },
+    error: (err: any) => {
+      console.error('❌ Error al obtener historial:', err);
+      this.toastService.error('Error', 'No se pudo cargar el historial médico');
+      this.cargandoHistorial = false;
+      this.cdRef.detectChanges();
+    }
+  });
+}
+
+controlarApiario(abrir: boolean) {
+    if (this.isApiarioOpening) {
+        console.log('El apiario ya está en proceso de apertura/cierre');
+        return;
+    }
+
+    if (abrir) {
+        // Abrir apiario (mover a 140 grados)
+        this.isApiarioOpening = true;
+        this.servo2Grados = 140;
+        
+        // Llamar al método para controlar el servo
+        this.controlarServo2(this.servo2Grados);
+        
+        // Después de 5 segundos, regresar a 110 grados
+        setTimeout(() => {
+            this.servo2Grados = 110;
+            this.controlarServo2(this.servo2Grados);
+            this.isApiarioOpening = false;
+        }, 5000);
+    } else {
+        // Cerrar apiario inmediatamente
+        this.servo2Grados = 110;
+        this.controlarServo2(this.servo2Grados);
+    }
+}
+
+/**
+ * Cerrar modal de historial completo
+ */
+cerrarHistorialCompleto(): void {
+  this.mostrarHistorialCompleto = false;
+  this.historialCompleto = null;
+  this.cdRef.detectChanges();
+}
+
+/**
+ * Formatear fecha para mostrar en historial
+ */
+formatearFechaHistorial(fecha: string): string {
+  if (!fecha) return 'Fecha no disponible';
+  
+  try {
+    const fechaObj = new Date(fecha);
+    return fechaObj.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return fecha;
+  }
+}
+
+/**
+ * Contar medicamentos en un historial
+ */
+contarMedicamentosHistorial(historial: HistorialMedicoItem): number {
+  return historial.medicamentos?.length || historial.receta?.medicamentos?.length || 0;
+}
+
+/**
+ * Obtener descripción de medicamentos del historial
+ */
+obtenerMedicamentosHistorial(historial: HistorialMedicoItem): string {
+  if (historial.medicamentos && historial.medicamentos.length > 0) {
+    return historial.medicamentos.map((m: any) => m.nombre).join(', ');
+  } else if (historial.receta?.medicamentos) {
+    return historial.receta.medicamentos.map((rm: RecetaMedicamento) => 
+      rm.medicamentoInfo?.nombre || 'Medicamento desconocido'
+    ).join(', ');
+  }
+  return 'Sin medicamentos registrados';
 }
   cargarMedicamentosDisponibles(): void {
     this.cargandoMedicamentos = true;
@@ -250,7 +382,6 @@ cargarDatosSensores(idApiario: string): void {
    */
   controlarVentilador(encender: boolean): void {
     if (!this.apiarioSeleccionado?.dispositivoId) {
-      this.toastService.warning('Dispositivo requerido', 'No hay dispositivo vinculado');
       return;
     }
 
@@ -261,7 +392,6 @@ cargarDatosSensores(idApiario: string): void {
       next: (respuesta: string) => {
         this.estadoVentilador = encender;
         console.log('Ventilador:', respuesta);
-        this.toastService.success('Ventilador', `Ventilador ${encender ? 'encendido' : 'apagado'}`);
       },
       error: (error) => {
         console.error('Error al controlar ventilador:', error);
@@ -275,7 +405,6 @@ cargarDatosSensores(idApiario: string): void {
    */
   controlarCompuerta(abrir: boolean): void {
     if (!this.apiarioSeleccionado?.dispositivoId) {
-      this.toastService.warning('Dispositivo requerido', 'No hay dispositivo vinculado');
       return;
     }
 
@@ -286,7 +415,6 @@ cargarDatosSensores(idApiario: string): void {
       next: (respuesta: string) => {
         this.estadoCompuerta = abrir;
         console.log('Compuerta:', respuesta);
-        this.toastService.success('Compuerta', `Compuerta ${abrir ? 'abierta' : 'cerrada'}`);
       },
       error: (error) => {
         console.error('Error al controlar compuerta:', error);
@@ -300,7 +428,6 @@ cargarDatosSensores(idApiario: string): void {
    */
   controlarLuz(encender: boolean): void {
     if (!this.apiarioSeleccionado?.dispositivoId) {
-      this.toastService.warning('Dispositivo requerido', 'No hay dispositivo vinculado');
       return;
     }
 
@@ -311,7 +438,6 @@ cargarDatosSensores(idApiario: string): void {
       next: (respuesta: string) => {
         this.estadoLuz = encender;
         console.log('Luz:', respuesta);
-        this.toastService.success('Luz', `Luz ${encender ? 'encendida' : 'apagada'}`);
       },
       error: (error) => {
         console.error('Error al controlar luz:', error);
@@ -325,7 +451,6 @@ cargarDatosSensores(idApiario: string): void {
    */
   controlarServo1(grados: number): void {
     if (!this.apiarioSeleccionado?.dispositivoId) {
-      this.toastService.warning('Dispositivo requerido', 'No hay dispositivo vinculado');
       return;
     }
 
@@ -335,7 +460,6 @@ cargarDatosSensores(idApiario: string): void {
     ).subscribe({
       next: (respuesta: string) => {
         console.log('Servo 1:', respuesta);
-        this.toastService.info('Servo 1', `Movido a ${grados}°`);
       },
       error: (error) => {
         console.error('Error al controlar servo 1:', error);
@@ -359,7 +483,6 @@ cargarDatosSensores(idApiario: string): void {
     ).subscribe({
       next: (respuesta: string) => {
         console.log('Servo 2:', respuesta);
-        this.toastService.info('Servo 2', `Movido a ${grados}°`);
       },
       error: (error) => {
         console.error('Error al controlar servo 2:', error);
@@ -389,7 +512,6 @@ cargarDatosSensores(idApiario: string): void {
     ).subscribe({
       next: (respuestas: string[]) => {
         console.log('Todos los actuadores controlados:', respuestas);
-        this.toastService.success('Control', 'Todos los actuadores actualizados');
         
         // Actualizar estados locales
         if (config.ventilador !== undefined) this.estadoVentilador = config.ventilador;
@@ -1229,7 +1351,6 @@ getEstadoCompuerta(grados: number): string {
           this.procesarSugerenciasIA();
           console.log('🤖 Recomendaciones de IA:', this.recomendacionesIA);
         } else {
-          this.toastService.error('Error', response.descripcion || 'Error al obtener recomendaciones');
         }
         this.cargandoRecomendaciones = false;
         
@@ -1238,7 +1359,6 @@ getEstadoCompuerta(grados: number): string {
       },
       error: (err: any) => {
         console.error('❌ Error al obtener recomendaciones de IA:', err);
-        this.toastService.error('Error', 'No se pudieron cargar las recomendaciones de IA');
         this.cargandoRecomendaciones = false;
         
         // ✅ DETECCIÓN ESTRATÉGICA: Solo una vez después del error
@@ -1448,7 +1568,6 @@ getEstadoCompuerta(grados: number): string {
           };
           
           this.mensajesChat.push(mensajeError);
-          this.toastService.error('Error', response.descripcion || 'Error en la respuesta de IA');
         }
         
         this.cargandoChat = false;
@@ -1473,7 +1592,6 @@ getEstadoCompuerta(grados: number): string {
         
         this.mensajesChat.push(mensajeError);
         this.cargandoChat = false;
-        this.toastService.error('Error', 'No se pudo conectar con el servicio de IA');
 
         // ✅ DETECCIÓN ESTRATÉGICA: Solo una vez después del error
         this.cdRef.detectChanges();
@@ -1524,7 +1642,6 @@ getEstadoCompuerta(grados: number): string {
           this.recomendacionesIA = response.data; // Guardar datos completos
           this.procesarPredicciones(response.data);
         } else {
-          this.toastService.error('Error', response.descripcion || 'Error al cargar predicciones');
           this.sugerenciasAutomaticas = []; // Mantener vacío si hay error
         }
         this.cargandoRecomendaciones = false;
@@ -1532,7 +1649,6 @@ getEstadoCompuerta(grados: number): string {
       },
       error: (err: any) => {
         console.error('❌ Error al obtener predicciones:', err);
-        this.toastService.error('Error', 'No se pudieron cargar las predicciones');
         this.sugerenciasAutomaticas = []; // Mantener vacío si hay error
         this.cargandoRecomendaciones = false;
         this.cdRef.detectChanges();
@@ -1756,25 +1872,16 @@ getEstadoCompuerta(grados: number): string {
               salud.mensaje || 'Servicio de IA funcionando correctamente'
             );
           } else {
-            this.toastService.error(
-              'BEE IA fuera de línea ❌',
-              salud.mensaje || 'El servicio de IA no está disponible'
-            );
+            
           }
           console.log('🔍 Estado de Ollama:', salud);
         } else {
-          this.toastService.error(
-            'Error de conexión',
-            response.descripcion || 'No se pudo verificar el estado del servicio de IA'
-          );
+         
         }
       },
       error: (err: any) => {
         console.error('❌ Error al verificar salud de Ollama:', err);
-        this.toastService.error(
-          'Error de conexión',
-          'No se pudo conectar con el servicio de IA. Verifica que el servidor esté en ejecución.'
-        );
+   
       }
     });
   }

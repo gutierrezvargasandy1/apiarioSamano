@@ -1,8 +1,5 @@
 package com.ApiarioSamano.MicroServiceApiarios.factory;
 
-public interface Factory <T, R> {
-
-T crear (R data ); 
-    
-} 
-    
+public abstract class Factory<T, R> {
+    public abstract T crear(R data);
+}

@@ -1,7 +1,7 @@
-package com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI;
+package com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.LotesClient;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.ApiarioSamano.MicroServiceAlmacen.config.JwtTokenProvider;
@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
-public class LotesClient {
+@Service
+public class LotesClient implements ILotesService {
 
     private final RestTemplate restTemplate;
     private final JwtTokenProvider jwtTokenProvider;
@@ -53,9 +53,7 @@ public class LotesClient {
         return headers;
     }
 
-    /**
-     * Obtiene todos los lotes del microservicio de producción
-     */
+    @Override
     public List<LoteResponseDTO> obtenerTodosLotes() {
         String url = baseUrl + "/api/lotes";
         log.info("🔄 Consultando todos los lotes del microservicio de producción: URL={}", url);
@@ -65,7 +63,6 @@ public class LotesClient {
         try {
             log.debug("📡 Enviando request al microservicio de lotes...");
 
-            // Intentar diferentes formatos de respuesta
             ResponseEntity<Object> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, Object.class);
             log.info("✅ Request enviado. Código de estado HTTP: {}", response.getStatusCode());
 
@@ -77,7 +74,6 @@ public class LotesClient {
 
             log.debug("📋 Respuesta cruda recibida: {}", responseBody);
 
-            // Procesar la respuesta según el formato
             List<LoteResponseDTO> lotes = procesarRespuestaLotes(responseBody);
             log.info("✅ Lotes obtenidos correctamente. Cantidad: {}", lotes.size());
 
@@ -95,9 +91,6 @@ public class LotesClient {
         }
     }
 
-    /**
-     * Procesa la respuesta del microservicio de lotes según diferentes formatos
-     */
     @SuppressWarnings("unchecked")
     private List<LoteResponseDTO> procesarRespuestaLotes(Object responseBody) {
         try {
@@ -121,7 +114,6 @@ public class LotesClient {
                 }
             }
 
-            // Extraer la lista de lotes
             JsonNode dataNode = null;
 
             // Buscar el nodo de datos
@@ -159,9 +151,7 @@ public class LotesClient {
         }
     }
 
-    /**
-     * Obtiene lotes por ID de almacén
-     */
+    @Override
     public List<LoteResponseDTO> obtenerLotesPorAlmacen(Long idAlmacen) {
         log.info("🔄 Consultando lotes del almacén ID: {} desde microservicio de producción", idAlmacen);
 
@@ -177,9 +167,7 @@ public class LotesClient {
         return lotesFiltrados;
     }
 
-    /**
-     * Obtiene un lote específico por ID
-     */
+    @Override
     public LoteResponseDTO obtenerLotePorId(Long idLote) {
         String url = baseUrl + "/api/lotes/" + idLote;
         log.info("🔄 Consultando lote ID: {} desde microservicio de producción: URL={}", idLote, url);

@@ -38,10 +38,7 @@
                         <span class="dato-label">💊 Receta:</span>
                         <span class="dato-valor">{{ apiario.receta ? 'Activa' : 'Sin receta' }}</span>
                     </div>
-                    <div class="dato-row">
-                        <span class="dato-label">📋 Historial:</span>
-                        <span class="dato-valor">{{ contarMedicamentos(apiario) }} medicamentos</span>
-                    </div>
+
                     <!-- 🔗 Mostrar dispositivo vinculado -->
                     <div class="dato-row" *ngIf="apiario.dispositivoId">
                         <span class="dato-label">📱 Dispositivo:</span>
@@ -256,14 +253,24 @@
     </div>
 </div>
 
-                    <div class="control-group">
-                        <label>🔧 Servo 2</label>
-                        <div class="servo-control">
-                            <input type="range" min="0" max="180" [(ngModel)]="servo2Grados" 
-                                   class="servo-slider" (change)="controlarServo2(servo2Grados)">
-                            <span class="servo-value">{{ servo2Grados }}°</span>
-                        </div>
-                    </div>
+                   <div class="control-group">
+    <label>🚪 Apiario</label>
+    <div class="control-buttons">
+        <button class="btn-control" 
+                [class.active]="servo2Grados === 110"
+                (click)="controlarApiario(false)">
+            CERRADO
+        </button>
+        <button class="btn-control" 
+                [class.active]="servo2Grados !== 110"
+                (click)="controlarApiario(true)">
+            ABIERTO
+        </button>
+    </div>
+    <div class="servo-status">
+        Estado: {{ servo2Grados === 110 ? 'Cerrado' : 'Abierto' }} ({{ servo2Grados }}°)
+    </div>
+</div>
 
                     
 

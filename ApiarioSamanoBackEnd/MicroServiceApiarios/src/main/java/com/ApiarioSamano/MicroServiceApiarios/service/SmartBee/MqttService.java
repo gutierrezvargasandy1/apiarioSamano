@@ -1,6 +1,8 @@
 package com.ApiarioSamano.MicroServiceApiarios.service.SmartBee;
 
 import com.ApiarioSamano.MicroServiceApiarios.config.SensorWebSocketHandler;
+import com.ApiarioSamano.MicroServiceApiarios.dto.DispositivoDTO.DispositivoRequestDTO;
+import com.ApiarioSamano.MicroServiceApiarios.factory.DispositivoFactory;
 import com.ApiarioSamano.MicroServiceApiarios.model.Dispositivo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -30,14 +32,15 @@ public class MqttService {
     private MqttClient client;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Almacenar dispositivos detectados (en memoria, puedes cambiarlo a BD)
+    private final DispositivoFactory dispositivoFactory;
+
+    // Almacenar dispositivos detectados
     private final Map<String, Dispositivo> dispositivosDetectados = new ConcurrentHashMap<>();
 
-    // 📊 Almacenar ÚLTIMOS datos de sensores en memoria (solo para consulta
-    // directa)
+    // Últimos datos de sensores
     private final Map<String, Map<String, String>> ultimosDatosSensores = new ConcurrentHashMap<>();
 
-    // ⏰ Almacenar timestamps de última actualización
+    // Timestamps de sensores
     private final Map<String, Map<String, Long>> timestampsSensores = new ConcurrentHashMap<>();
 
     // ========================
@@ -47,7 +50,6 @@ public class MqttService {
     public void connect() {
         try {
             String url = "tcp://" + mqttHost + ":" + mqttPort;
-
             client = new MqttClient(url, clientId, null);
 
             MqttConnectOptions options = new MqttConnectOptions();
@@ -59,7 +61,7 @@ public class MqttService {
 
             System.out.println("📡 Conectado al broker MQTT: " + url);
 
-            // Suscribirse a todos los topics de dispositivos
+            // Suscripción
             client.subscribe("apiarios/dispositivos/#", (topic, msg) -> {
                 String payload = new String(msg.getPayload());
                 procesarMensaje(topic, payload);
@@ -76,12 +78,9 @@ public class MqttService {
     private void procesarMensaje(String topic, String payload) {
         System.out.println("📥 Mensaje recibido -> Topic: " + topic + "   Payload: " + payload);
 
-        // Detectar si es un registro de dispositivo
         if (topic.equals("apiarios/dispositivos/registro")) {
             procesarRegistroDispositivo(payload);
-        }
-        // Procesar datos de sensores y estado (usando dispositivoId)
-        else if (topic.contains("/dispositivos/") && topic.contains("/status")) {
+        } else if (topic.contains("/dispositivos/") && topic.contains("/status")) {
             procesarEstado(topic, payload);
         } else if (topic.contains("/dispositivos/") && topic.contains("/humedad_suelo")) {
             procesarDatoSensor(topic, payload, "humedad_suelo");
@@ -91,17 +90,20 @@ public class MqttService {
     }
 
     // ================================
-    // 📡 PROCESAR REGISTRO DE DISPOSITIVO
+    // 📡 PROCESAR REGISTRO DE DISPOSITIVO (FACTORY METHOD)
     // ================================
     private void procesarRegistroDispositivo(String json) {
         try {
-            // Parsear el JSON del dispositivo
-            Dispositivo dispositivo = objectMapper.readValue(json, Dispositivo.class);
+            // Convertimos JSON a DTO
+            DispositivoRequestDTO dto = objectMapper.readValue(json, DispositivoRequestDTO.class);
 
-            // Guardar en memoria
+            // Creamos el dispositivo mediante la fábrica
+            Dispositivo dispositivo = dispositivoFactory.crear(dto);
+
+            // Guardamos en memoria
             dispositivosDetectados.put(dispositivo.getDispositivoId(), dispositivo);
 
-            System.out.println("✅ Dispositivo registrado:");
+            System.out.println("✅ Dispositivo registrado (Factory Method):");
             System.out.println("   - ID Dispositivo: " + dispositivo.getDispositivoId());
             System.out.println("   - Tipo: " + dispositivo.getTipo());
             System.out.println("   - Sensores: " + dispositivo.getSensores());
@@ -114,47 +116,37 @@ public class MqttService {
     }
 
     // ================================
-    // 📊 PROCESAR DATOS DE SENSORES EN TIEMPO REAL
+    // 📊 PROCESAR DATOS SENSOR
     // ================================
     private void procesarDatoSensor(String topic, String payload, String tipoSensor) {
         String dispositivoId = extraerDispositivoId(topic);
 
-        // 🔥 DETECTAR SI EL SENSOR ESTÁ DESCONECTADO
         if (payload.equals("SENSOR_DESCONECTADO") || payload.contains("DESCONECTADO")) {
-            // Limpiar datos cuando el sensor se desconecta
             if (ultimosDatosSensores.containsKey(dispositivoId)) {
                 ultimosDatosSensores.get(dispositivoId).remove(tipoSensor);
             }
 
-            // 🔥 ENVIAR MENSAJE DE DESCONEXIÓN POR WEBSOCKET
             enviarPorWebSocket(dispositivoId, tipoSensor, "SENSOR_DESCONECTADO");
 
             System.out.println("❌ Sensor " + tipoSensor + " de " + dispositivoId + ": DESCONECTADO");
             return;
         }
 
-        // 🔥 GUARDAR SOLO EL ÚLTIMO DATO (no historial)
         ultimosDatosSensores
                 .computeIfAbsent(dispositivoId, k -> new ConcurrentHashMap<>())
                 .put(tipoSensor, payload);
 
-        // 🔥 GUARDAR TIMESTAMP DE ACTUALIZACIÓN
         timestampsSensores
                 .computeIfAbsent(dispositivoId, k -> new ConcurrentHashMap<>())
                 .put(tipoSensor, System.currentTimeMillis());
 
-        // 🔥 ENVIAR A WEBSOCKET PARA TIEMPO REAL
         enviarPorWebSocket(dispositivoId, tipoSensor, payload);
 
         System.out.println("📊 " + tipoSensor + " de " + dispositivoId + ": " + payload);
     }
 
-    // ================================
-    // 🔥 ENVIAR DATOS POR WEBSOCKET
-    // ================================
     private void enviarPorWebSocket(String dispositivoId, String tipoSensor, String valor) {
         try {
-            // Crear mensaje JSON para WebSocket
             String mensajeWebSocket = String.format("""
                     {
                         "dispositivoId": "%s",
@@ -164,7 +156,6 @@ public class MqttService {
                     }
                     """, dispositivoId, tipoSensor, valor, System.currentTimeMillis());
 
-            // 🔥 ENVIAR A TODOS LOS CLIENTES CONECTADOS
             SensorWebSocketHandler.enviarATodos(mensajeWebSocket);
 
         } catch (Exception e) {
@@ -183,7 +174,6 @@ public class MqttService {
     }
 
     private String extraerDispositivoId(String topic) {
-        // De "apiarios/dispositivos/b0a73222f640/status" extraer "b0a73222f640"
         String[] partes = topic.split("/");
         for (int i = 0; i < partes.length; i++) {
             if (partes[i].equals("dispositivos") && i + 1 < partes.length) {
@@ -194,12 +184,12 @@ public class MqttService {
     }
 
     // ================================
-    // 🔄 LIMPIAR DATOS ANTIGUOS (CADA 30 SEGUNDOS)
+    // 🔄 LIMPIAR DATOS ANTIGUOS
     // ================================
     @Scheduled(fixedRate = 30000)
     public void limpiarDatosAntiguos() {
         long ahora = System.currentTimeMillis();
-        long UMBRAL_DESCONEXION = 45000; // 45 segundos sin datos = desconectado
+        long UMBRAL_DESCONEXION = 45000;
 
         System.out.println("🔄 Revisando datos de sensores antiguos...");
 
@@ -211,16 +201,13 @@ public class MqttService {
                 long tiempoInactivo = ahora - ultimaActualizacion;
 
                 if (tiempoInactivo > UMBRAL_DESCONEXION) {
-                    // 🔥 MARCAR SENSOR COMO DESCONECTADO
                     System.out.println("❌ Sensor " + sensor + " de " + dispositivoId + " inactivo por "
                             + (tiempoInactivo / 1000) + " segundos");
 
-                    // Limpiar dato
                     if (ultimosDatosSensores.containsKey(dispositivoId)) {
                         ultimosDatosSensores.get(dispositivoId).remove(sensor);
                     }
 
-                    // Enviar notificación por WebSocket
                     enviarPorWebSocket(dispositivoId, sensor, "SENSOR_DESCONECTADO");
                 }
             }
@@ -228,7 +215,7 @@ public class MqttService {
     }
 
     // ================================
-    // 🧹 MÉTODO PARA LIMPIAR DATOS MANUALMENTE
+    // 🧹 LIMPIEZA MANUAL
     // ================================
     public void limpiarDatosDispositivo(String dispositivoId) {
         if (ultimosDatosSensores.containsKey(dispositivoId)) {
@@ -241,7 +228,7 @@ public class MqttService {
     }
 
     // ================================
-    // 📋 OBTENER DISPOSITIVOS DETECTADOS
+    // GETTERS
     // ================================
     public Map<String, Dispositivo> getDispositivosDetectados() {
         return dispositivosDetectados;
@@ -251,13 +238,9 @@ public class MqttService {
         return dispositivosDetectados.get(dispositivoId);
     }
 
-    // ================================
-    // 📊 OBTENER ÚLTIMOS DATOS DE SENSORES (para polling)
-    // ================================
     public Map<String, String> getUltimosDatosSensores(String dispositivoId) {
         Map<String, String> datos = ultimosDatosSensores.getOrDefault(dispositivoId, new HashMap<>());
 
-        // 🔥 VERIFICAR SI LOS DATOS SON RECIENTES
         Map<String, Long> timestamps = timestampsSensores.getOrDefault(dispositivoId, new HashMap<>());
         long ahora = System.currentTimeMillis();
         long UMBRAL_DESCONEXION = 45000;
@@ -274,45 +257,33 @@ public class MqttService {
         return datos;
     }
 
-    // ================================
-    // 🔍 MÉTODO PARA VALIDAR CONEXIÓN
-    // ================================
     public boolean estaConectado() {
         return client != null && client.isConnected();
     }
 
     // ========================
-    // PUBLICAR COMANDOS - ACTUALIZADOS PARA DISPOSITIVOS
+    // PUBLICACIÓN DE COMANDOS
     // ========================
-
-    // 🌀 Ventilador (Motor A)
     public void enviarComandoVentilador(String dispositivoId, boolean estado) {
         publicar("apiarios/dispositivos/" + dispositivoId + "/comandos/ventilador", estado ? "ON" : "OFF");
     }
 
-    // 🚪 Compuerta (Motor B)
     public void enviarComandoCompuerta(String dispositivoId, boolean estado) {
         publicar("apiarios/dispositivos/" + dispositivoId + "/comandos/compuerta", estado ? "ON" : "OFF");
     }
 
-    // 💡 Luz
     public void enviarComandoLuz(String dispositivoId, boolean estado) {
         publicar("apiarios/dispositivos/" + dispositivoId + "/comandos/luz", estado ? "ON" : "OFF");
     }
 
-    // 🔧 Servo 1
     public void enviarServo1(String dispositivoId, int grados) {
         publicar("apiarios/dispositivos/" + dispositivoId + "/comandos/servo1", String.valueOf(grados));
     }
 
-    // 🔧 Servo 2
     public void enviarServo2(String dispositivoId, int grados) {
         publicar("apiarios/dispositivos/" + dispositivoId + "/comandos/servo2", String.valueOf(grados));
     }
 
-    // ========================
-    // MÉTODO GENERAL DE ENVÍO
-    // ========================
     private void publicar(String topic, String mensaje) {
         try {
             if (!estaConectado()) {

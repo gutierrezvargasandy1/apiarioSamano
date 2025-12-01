@@ -10,7 +10,7 @@ import com.ApiarioSamano.MicroServiceAlmacen.model.MateriasPrimas;
 import com.ApiarioSamano.MicroServiceAlmacen.model.Almacen;
 import com.ApiarioSamano.MicroServiceAlmacen.repository.AlmacenRepository;
 import com.ApiarioSamano.MicroServiceAlmacen.repository.MateriasPrimasRepository;
-import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClientMicroservice;
+import com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.ProveedoresClient.IProveedoresService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,9 @@ import java.util.stream.Collectors;
 public class MateriasPrimasService {
 
     private final MateriasPrimasRepository materiasPrimasRepository;
-    private final ProveedoresClientMicroservice proveedoresClient;
+
+    private final IProveedoresService proveedoresService;
+
     private final AlmacenRepository almacenRepository;
 
     private AlmacenResponse mapAlmacen(Almacen almacen) {
@@ -44,15 +46,11 @@ public class MateriasPrimasService {
         return response;
     }
 
-    /**
-     * Convierte byte[] a String Base64 para la respuesta
-     */
     private MateriasPrimasResponse mapMateria(MateriasPrimas m) {
         MateriasPrimasResponse response = new MateriasPrimasResponse();
         response.setId(m.getId());
         response.setNombre(m.getNombre());
 
-        // Convertir byte[] a String Base64
         if (m.getFoto() != null && m.getFoto().length > 0) {
             String fotoBase64 = Base64.getEncoder().encodeToString(m.getFoto());
             response.setFoto(fotoBase64);
@@ -66,16 +64,12 @@ public class MateriasPrimasService {
         return response;
     }
 
-    /**
-     * Convierte String Base64 a byte[] para guardar en BD
-     */
     private byte[] convertBase64ToBytes(String base64String) {
         if (base64String == null || base64String.trim().isEmpty()) {
             return null;
         }
 
         try {
-            // Si viene con prefijo data:image/...;base64, lo removemos
             if (base64String.contains(",")) {
                 base64String = base64String.split(",")[1];
             }
@@ -104,25 +98,37 @@ public class MateriasPrimasService {
             materia = new MateriasPrimas();
         }
 
-        // Validar proveedor
-        List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
+        log.info("🔍 [CACHE-PROVEEDORES] Validando proveedor ID: {} (con cache)...", req.getIdProvedor());
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+
         boolean existeProveedor = proveedores.stream()
                 .anyMatch(p -> p.getId().equals(req.getIdProvedor().longValue()));
 
         if (!existeProveedor) {
+            log.warn("⚠️ Proveedor con ID {} no encontrado", req.getIdProvedor());
             return new CodigoResponse<>(404, "Proveedor no encontrado", null);
         }
+        log.info("✅ Proveedor ID {} validado correctamente", req.getIdProvedor());
 
-        // Buscar almacén
         Almacen almacen = almacenRepository.findById(req.getIdAlmacen())
                 .orElseThrow(() -> new RuntimeException("Almacén no encontrado"));
+
+        if (req.getId() == null) {
+            int espaciosOcupados = calcularEspaciosOcupados(almacen);
+            log.info("📊 Capacidad del almacén: {}, Espacios ocupados: {}", almacen.getCapacidad(), espaciosOcupados);
+
+            if (espaciosOcupados >= almacen.getCapacidad()) {
+                log.error("❌ No hay capacidad disponible en el almacén. Capacidad: {}, Ocupados: {}",
+                        almacen.getCapacidad(), espaciosOcupados);
+                return new CodigoResponse<>(400, "No hay capacidad disponible en el almacén", null);
+            }
+        }
 
         materia.setNombre(req.getNombre());
         materia.setCantidad(req.getCantidad());
         materia.setAlmacen(almacen);
         materia.setIdProveedor(req.getIdProvedor());
 
-        // Foto base64 a byte[]
         if (req.getFoto() != null && !req.getFoto().isBlank()) {
             materia.setFoto(convertBase64ToBytes(req.getFoto()));
         }
@@ -130,27 +136,33 @@ public class MateriasPrimasService {
         log.info("💾 Guardando en BD...");
         MateriasPrimas guardada = materiasPrimasRepository.save(materia);
 
+        if (req.getId() == null) {
+            if (almacen.getMateriasPrimas() == null) {
+                almacen.setMateriasPrimas(new java.util.ArrayList<>());
+            }
+            almacen.getMateriasPrimas().add(guardada);
+            almacenRepository.save(almacen);
+            log.info("✅ Materia prima agregada al almacén. Nuevos espacios ocupados: {}",
+                    calcularEspaciosOcupados(almacen));
+        }
+
         return new CodigoResponse<>(
                 200,
                 "✅ Materia prima " + (req.getId() != null ? "actualizada" : "creada") + " correctamente",
                 mapMateria(guardada));
     }
 
-    // Método auxiliar para calcular espacios ocupados
     private int calcularEspaciosOcupados(Almacen almacen) {
         int espacios = 0;
 
-        // Contar materias primas
         if (almacen.getMateriasPrimas() != null) {
             espacios += almacen.getMateriasPrimas().size();
         }
 
-        // Contar herramientas (si existen en tu modelo)
         if (almacen.getHerramientas() != null) {
             espacios += almacen.getHerramientas().size();
         }
 
-        // Contar medicamentos (si existen en tu modelo)
         if (almacen.getMedicamentos() != null) {
             espacios += almacen.getMedicamentos().size();
         }
@@ -190,7 +202,6 @@ public class MateriasPrimasService {
             MateriasPrimas materia = optMateria.get();
             Almacen almacen = materia.getAlmacen();
 
-            // Eliminar la materia prima
             materiasPrimasRepository.deleteById(id);
             log.info("✅ Materia prima con ID {} eliminada correctamente", id);
 
@@ -210,14 +221,14 @@ public class MateriasPrimasService {
 
     // ================== MÉTODOS CON PROVEEDOR ==================
     public CodigoResponse<List<MateriasPrimasConProveedorDTO>> obtenerTodasConProveedor() {
-        log.info("📋 Obteniendo materias primas con información de proveedor");
+        log.info("📋 Obteniendo materias primas con información de proveedor (con Proxy/Cache)");
 
         List<MateriasPrimas> materias = materiasPrimasRepository.findAll();
         log.info("✅ Se obtuvieron {} materias primas", materias.size());
 
-        log.info("🔍 Consultando microservicio de proveedores...");
-        List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
-        log.info("✅ Se obtuvieron {} proveedores", proveedores.size());
+        log.info("🔍 [CACHE-PROVEEDORES] Consultando microservicio de proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Se obtuvieron {} proveedores", proveedores.size());
 
         List<MateriasPrimasConProveedorDTO> resultado = materias.stream().map(m -> {
             MateriasPrimasConProveedorDTO dto = new MateriasPrimasConProveedorDTO();
@@ -235,10 +246,14 @@ public class MateriasPrimasService {
             dto.setCantidad(m.getCantidad());
             dto.setAlmacen(mapAlmacen(m.getAlmacen()));
 
+            // Buscar proveedor en la lista cacheada
             proveedores.stream()
                     .filter(p -> p.getId().equals(m.getIdProveedor().longValue()))
                     .findFirst()
-                    .ifPresent(dto::setProveedor);
+                    .ifPresent(proveedor -> {
+                        dto.setProveedor(proveedor);
+                        log.debug("✅ [CACHE-PROVEEDORES] Proveedor encontrado: {}", proveedor.getNombreEmpresa());
+                    });
 
             return dto;
         }).collect(Collectors.toList());
@@ -248,7 +263,7 @@ public class MateriasPrimasService {
     }
 
     public CodigoResponse<MateriasPrimasConProveedorDTO> obtenerPorIdConProveedor(Long id) {
-        log.info("🔍 Buscando materia prima con proveedor, ID: {}", id);
+        log.info("🔍 Buscando materia prima con proveedor, ID: {} (con Proxy/Cache)", id);
 
         Optional<MateriasPrimas> optMateria = materiasPrimasRepository.findById(id);
         if (optMateria.isEmpty()) {
@@ -259,8 +274,8 @@ public class MateriasPrimasService {
         MateriasPrimas materia = optMateria.get();
         log.info("✅ Materia prima encontrada: {}", materia.getNombre());
 
-        log.info("🔍 Consultando microservicio de proveedores...");
-        List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
+        log.info("🔍 [CACHE-PROVEEDORES] Consultando microservicio de proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
 
         MateriasPrimasConProveedorDTO dto = new MateriasPrimasConProveedorDTO();
         dto.setId(materia.getId());
@@ -282,7 +297,7 @@ public class MateriasPrimasService {
                 .findFirst()
                 .ifPresent(proveedor -> {
                     dto.setProveedor(proveedor);
-                    log.info("✅ Proveedor asociado: {}", proveedor.getNombreEmpresa());
+                    log.info("✅ [CACHE-PROVEEDORES] Proveedor asociado: {}", proveedor.getNombreEmpresa());
                 });
 
         return new CodigoResponse<>(200, "Materia prima con proveedor obtenida", dto);
@@ -299,10 +314,10 @@ public class MateriasPrimasService {
     }
 
     public CodigoResponse<List<MateriasPrimasResponse>> obtenerPorProveedor(Integer idProveedor) {
-        log.info("🔍 Buscando materias primas del proveedor ID: {}", idProveedor);
+        log.info("🔍 Buscando materias primas del proveedor ID: {} (con Proxy/Cache)", idProveedor);
 
-        log.info("🔍 Validando existencia del proveedor...");
-        List<ProveedorResponseDTO> proveedores = proveedoresClient.obtenerTodosProveedores();
+        log.info("🔍 [CACHE-PROVEEDORES] Validando existencia del proveedor...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
         boolean existeProveedor = proveedores.stream()
                 .anyMatch(p -> p.getId().equals(idProveedor.longValue()));
 
@@ -321,4 +336,97 @@ public class MateriasPrimasService {
         return new CodigoResponse<>(200, "Materias primas del proveedor obtenidas", lista);
     }
 
+    /**
+     * Método para obtener materias primas con información completa (almacén y
+     * proveedor)
+     */
+    public CodigoResponse<List<MateriasPrimasConProveedorDTO>> obtenerMateriasPrimasCompletas() {
+        log.info("📋 Obteniendo materias primas con información completa (almacén + proveedor)");
+
+        List<MateriasPrimas> materias = materiasPrimasRepository.findAll();
+        log.info("✅ Se obtuvieron {} materias primas", materias.size());
+
+        // PROXY: Una sola llamada cacheada para todos los proveedores
+        log.info("🔍 [CACHE-PROVEEDORES] Obteniendo proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+        log.info("✅ [CACHE-PROVEEDORES] Proveedores obtenidos: {}", proveedores.size());
+
+        List<MateriasPrimasConProveedorDTO> resultado = materias.stream()
+                .map(materia -> {
+                    MateriasPrimasConProveedorDTO dto = new MateriasPrimasConProveedorDTO();
+                    dto.setId(materia.getId());
+                    dto.setNombre(materia.getNombre());
+                    dto.setCantidad(materia.getCantidad());
+
+                    // Convertir foto a Base64
+                    if (materia.getFoto() != null && materia.getFoto().length > 0) {
+                        dto.setFoto(Base64.getEncoder().encodeToString(materia.getFoto()));
+                    }
+
+                    // Información del almacén
+                    dto.setAlmacen(mapAlmacen(materia.getAlmacen()));
+
+                    // Buscar proveedor en la lista cacheada
+                    proveedores.stream()
+                            .filter(p -> p.getId() != null && p.getId().equals(materia.getIdProveedor().longValue()))
+                            .findFirst()
+                            .ifPresent(dto::setProveedor);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        log.info("✅ Materias primas completas procesadas: {} registros", resultado.size());
+        return new CodigoResponse<>(200, "Materias primas con información completa obtenidas", resultado);
+    }
+
+    /**
+     * Método para obtener materias primas por almacén con información de proveedor
+     */
+    public CodigoResponse<List<MateriasPrimasConProveedorDTO>> obtenerPorAlmacenConProveedor(Long idAlmacen) {
+        log.info("🔍 Buscando materias primas del almacén {} con información de proveedor (con Proxy/Cache)",
+                idAlmacen);
+
+        Optional<Almacen> optAlmacen = almacenRepository.findById(idAlmacen);
+        if (optAlmacen.isEmpty()) {
+            log.warn("⚠️ Almacén con ID {} no encontrado", idAlmacen);
+            return new CodigoResponse<>(404, "Almacén no encontrado", List.of());
+        }
+
+        Almacen almacen = optAlmacen.get();
+        List<MateriasPrimas> materias = materiasPrimasRepository.findByAlmacen(almacen);
+        log.info("✅ Se encontraron {} materias primas en el almacén {}", materias.size(), idAlmacen);
+
+        // PROXY: Una sola llamada cacheada para todos los proveedores
+        log.info("🔍 [CACHE-PROVEEDORES] Obteniendo proveedores (con cache)...");
+        List<ProveedorResponseDTO> proveedores = proveedoresService.obtenerTodosProveedores();
+
+        List<MateriasPrimasConProveedorDTO> resultado = materias.stream()
+                .map(materia -> {
+                    MateriasPrimasConProveedorDTO dto = new MateriasPrimasConProveedorDTO();
+                    dto.setId(materia.getId());
+                    dto.setNombre(materia.getNombre());
+                    dto.setCantidad(materia.getCantidad());
+
+                    // Convertir foto a Base64
+                    if (materia.getFoto() != null && materia.getFoto().length > 0) {
+                        dto.setFoto(Base64.getEncoder().encodeToString(materia.getFoto()));
+                    }
+
+                    // Información del almacén
+                    dto.setAlmacen(mapAlmacen(almacen));
+
+                    // Buscar proveedor en la lista cacheada
+                    proveedores.stream()
+                            .filter(p -> p.getId() != null && p.getId().equals(materia.getIdProveedor().longValue()))
+                            .findFirst()
+                            .ifPresent(dto::setProveedor);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        log.info("✅ Materias primas del almacén con proveedor procesadas: {} registros", resultado.size());
+        return new CodigoResponse<>(200, "Materias primas del almacén con proveedor obtenidas", resultado);
+    }
 }

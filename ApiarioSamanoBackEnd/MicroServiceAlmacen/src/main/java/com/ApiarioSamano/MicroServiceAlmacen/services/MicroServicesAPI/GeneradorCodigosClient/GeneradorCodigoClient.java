@@ -1,24 +1,18 @@
-package com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI;
+package com.ApiarioSamano.MicroServiceAlmacen.services.MicroServicesAPI.GeneradorCodigosClient;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
 import com.ApiarioSamano.MicroServiceAlmacen.config.JwtTokenProvider;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.GeneradorCodigoClient.AlmacenRequestClient;
 import com.ApiarioSamano.MicroServiceAlmacen.dto.GeneradorCodigoClient.CodigoResponseDTO;
 
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-
+import org.springframework.http.*;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@Component
-public class GeneradorCodigoClient {
+@Service
+public class GeneradorCodigoClient implements IGeneradorCodigoService {
 
     private final RestTemplate restTemplate;
     private final JwtTokenProvider jwtTokenProvider;
@@ -42,10 +36,10 @@ public class GeneradorCodigoClient {
         } else {
             log.warn("No se encontró JWT en el request actual");
         }
-
         return headers;
     }
 
+    @Override
     public String generarAlmacen(AlmacenRequestClient request) {
         String url = baseUrl + "/almacen";
         log.info("Preparando request al microservicio de códigos: URL={}, Request={}", url, request);
@@ -71,9 +65,9 @@ public class GeneradorCodigoClient {
         }
 
         log.debug("Respuesta recibida del microservicio: {}", body);
+        log.info("Código generado: {}, Estatus: {}, Descripción: {}",
+                body.getCodigo(), body.getEstatus(), body.getDescripcion());
 
-        log.info("Código generado: {}, Estatus: {}, Descripción: {}", body.getCodigo(), body.getEstatus(),
-                body.getDescripcion());
         return body.getCodigo();
     }
 }

@@ -35,7 +35,7 @@ echo ✅ Cache limpiado
 :: =============================
 :: SOLO PROCESAR UN MICROSERVICIO PARA PRUEBAS
 :: =============================
-set servicios= MicroServiceApiarios:microserviceapiarios MicroServiceProduccion:microserviceproduccion MicroServiceAlmacen:microservicealmacen MicroServiceProveedores:microserviceproveedores MicroServiceAuth:microserviceauth MicroServiceGestorDeArchivos:microservicegestordearchivos MicroServiceUsuario:microserviceusuario MicroServiceNotificacionesGmail:microservicenotificacionesgmail MicroServiceGeneradorCodigo:microservicegeneradorcodigo
+set servicios= MicroServiceAlmacen:microservicealmacen  MicroServiceApiarios:microserviceapiarios MicroServiceProduccion:microserviceproduccion MicroServiceProveedores:microserviceproveedores MicroServiceAuth:microserviceauth MicroServiceGestorDeArchivos:microservicegestordearchivos MicroServiceUsuario:microserviceusuario MicroServiceNotificacionesGmail:microservicenotificacionesgmail MicroServiceGeneradorCodigo:microservicegeneradorcodigo
 
 set reintentos=1  :: Solo un intento para ver el error real
 
